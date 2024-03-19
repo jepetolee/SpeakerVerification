@@ -6,9 +6,23 @@ import torch
 from scipy import signal
 import librosa
 
-class train_loader(object):
-    def __init__(self, train_list, train_path, musan_path, rir_path, num_frames, **kwargs):
-        self.train_path = train_path
+
+def MakeTxt2Data(train_list, train_path):
+    data_label, data_list = [], []
+    lines = open(train_list).read().splitlines()
+    DictionaryKeys = list(set([x.split()[0] for x in lines]))
+    DictionaryKeys.sort()
+    DictionaryKeys = {key: ii for ii, key in enumerate(DictionaryKeys)}
+
+    for index, line in enumerate(lines):
+        speaker_label = DictionaryKeys[line.split()[0]]
+        file_name = os.path.join(train_path, line.split()[1])
+        data_label.append(speaker_label)
+        data_list.append(file_name)
+    return data_label,data_list
+
+class DataLoader(object):
+    def __init__(self, data_label, data_list, num_frames):
         self.num_frames = num_frames
         # Load and configure augmentation files
 #         self.noisetypes = ['noise','speech','music']
@@ -22,19 +36,11 @@ class train_loader(object):
 #             self.noiselist[file.split('/')[-4]].append(file)
 #         self.rir_files  = glob.glob(os.path.join(rir_path,'*/*/*.wav'))
         # Load data & labels
-        self.data_list  = []
-        self.data_label = []
-        lines = open(train_list).read().splitlines()
-        dictkeys = list(set([x.split()[0] for x in lines]))
-        dictkeys.sort()
-        dictkeys = { key : ii for ii, key in enumerate(dictkeys) }
+        self.data_list  = data_label
+        self.data_label = data_list
 
         self.pad2d = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i-a.shape[1]))))
-        for index, line in enumerate(lines):
-            speaker_label = dictkeys[line.split()[0]]
-            file_name     = os.path.join(train_path, line.split()[1])
-            self.data_label.append(speaker_label)
-            self.data_list.append(file_name)
+
 
     def __getitem__(self, index):
         # Read the utterance and randomly select the segment
