@@ -5,24 +5,30 @@ import soundfile
 import torch
 from scipy import signal
 import librosa
+from torch.utils.data import Dataset
+class test_dataset_loader(Dataset):
+    def __init__(self, test_list, test_path, eval_frames, num_eval):
+        self.max_frames = eval_frames
+        self.num_eval   = num_eval
+        self.data_list = []
 
+        for index, line in enumerate(test_list):
 
-def MakeTxt2Data(train_list, train_path):
-    data_label, data_list = [], []
-    lines = open(train_list).read().splitlines()
-    DictionaryKeys = list(set([x.split()[0] for x in lines]))
-    DictionaryKeys.sort()
-    DictionaryKeys = {key: ii for ii, key in enumerate(DictionaryKeys)}
+            file_name = os.path.join(test_path, line)
 
-    for index, line in enumerate(lines):
-        speaker_label = DictionaryKeys[line.split()[0]]
-        file_name = os.path.join(train_path, line.split()[1])
-        data_label.append(speaker_label)
-        data_list.append(file_name)
-    return data_label,data_list
+            self.data_list.append(file_name)
 
-class DataLoader(object):
-    def __init__(self, data_label, data_list, num_frames):
+        self.pad2d = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
+    def __getitem__(self, index):
+        y, sr = librosa.load(self.data_list[index], sr=44100)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=int(0.02 * sr), hop_length=int(0.01 * sr))
+        padded_mfcc = self.pad2d(mfcc, 40)
+        return padded_mfcc, self.data_list[index]
+    def __len__(self):
+        return len(self.data_list)
+
+class DataBuilder(object):
+    def __init__(self, train_list, train_path, num_frames):
         self.num_frames = num_frames
         # Load and configure augmentation files
 #         self.noisetypes = ['noise','speech','music']
@@ -35,9 +41,18 @@ class DataLoader(object):
 #                 self.noiselist[file.split('/')[-4]] = []
 #             self.noiselist[file.split('/')[-4]].append(file)
 #         self.rir_files  = glob.glob(os.path.join(rir_path,'*/*/*.wav'))
-        # Load data & labels
-        self.data_list  = data_label
-        self.data_label = data_list
+
+        self.data_label, self.data_list = [], []
+        lines = open(train_list).read().splitlines()
+        DictionaryKeys = list(set([x.split()[0] for x in lines]))
+        DictionaryKeys.sort()
+        DictionaryKeys = {key: ii for ii, key in enumerate(DictionaryKeys)}
+
+        for index, line in enumerate(lines):
+            speaker_label = DictionaryKeys[line.split()[0]]
+            file_name = os.path.join(train_path, line.split()[1])
+            self.data_label.append(speaker_label)
+            self.data_list.append(file_name)
 
         self.pad2d = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i-a.shape[1]))))
 

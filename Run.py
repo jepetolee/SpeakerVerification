@@ -1,7 +1,8 @@
 import torch.optim as optim
 from AAM_Softmax import AAMsoftmax
-from DataBuilder import DataBuilder
-import os
+from DataBuilder import DataBuilder,test_dataset_loader
+
+import itertools
 from torch.utils.data import DataLoader
 from train import train
 from Model  import TestingModel
@@ -17,8 +18,16 @@ train_path = "./data/VoxCeleb1/train"
 TrainingSet = DataBuilder(train_list, train_path, 300)
 TrainDatasetLoader = DataLoader(TrainingSet, batch_size = 2048, shuffle = True, num_workers = 10, drop_last = True)
 
-ValidSet = DataBuilder('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test', 300)
-ValidDatasetLoader = DataLoader(ValidSet, batch_size = 2048, shuffle = True, num_workers = 10, drop_last = True)
+with open('./data/VoxCeleb1/trials.txt') as f:
+    lines = f.readlines()
+
+## Get a list of unique file names
+files = list(itertools.chain(*[x.strip().split()[-2:] for x in lines]))
+setfiles = list(set(files))
+setfiles.sort()
+
+ValidSet = test_dataset_loader(setfiles,'./data/VoxCeleb1/test', 300,10)
+ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = True, num_workers = 10, drop_last = True)
 
 num_epochs = 10
 train(model, optimizer, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs)
