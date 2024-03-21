@@ -1,3 +1,6 @@
+#! /usr/bin/python
+# -*- encoding: utf-8 -*-
+
 import torchvision
 import torch.nn as  nn
 import torch

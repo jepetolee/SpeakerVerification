@@ -1,34 +1,49 @@
-import os
-import random
-import numpy
-import soundfile
-import torch
+#! /usr/bin/python
+# -*- encoding: utf-8 -*-
+
+import os ,random,numpy,soundfile,torch,librosa ,itertools
 from scipy import signal
-import librosa
 from torch.utils.data import Dataset
-class test_dataset_loader(Dataset):
-    def __init__(self, test_list, test_path, eval_frames, num_eval):
-        self.max_frames = eval_frames
-        self.num_eval   = num_eval
-        self.data_list = []
 
-        for index, line in enumerate(test_list):
+# TestDataLoader (str, str, int, int)
+# explain: DataLoader for TestData, it helps to valid function in train.py,
+#          provide datas with list
+class TestDataLoader(Dataset):
+    def __init__(self, test_list:str, test_path:str, eval_frames:int, num_eval:int):
+        self.max_frames:int = eval_frames
+        self.num_eval:int   = num_eval
+        self.data_list:list = list()
 
+        with open(test_list) as f:
+            lines = f.readlines()
+
+        ## Get a list of unique file names
+        files = list(itertools.chain(*[x.strip().split()[-2:] for x in lines]))
+        set_files = list(set(files))
+        set_files.sort()
+
+        for index, line in enumerate(set_files):
             file_name = os.path.join(test_path, line)
-
             self.data_list.append(file_name)
 
-        self.pad2d = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
-    def __getitem__(self, index):
+        # Conv2D-Based Model need to change the MFCC Data, so we use this pad2d function
+        self.padding1DTo2D = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
+
+    def __getitem__(self, index:int):
         y, sr = librosa.load(self.data_list[index], sr=44100)
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=int(0.02 * sr), hop_length=int(0.01 * sr))
-        padded_mfcc = self.pad2d(mfcc, 40)
+        padded_mfcc = self.padding1DTo2D(mfcc, 40)
+
         return padded_mfcc, self.data_list[index]
+
     def __len__(self):
         return len(self.data_list)
 
-class DataBuilder(object):
-    def __init__(self, train_list, train_path, num_frames):
+# TrainDataBuilder (str,str,int)
+# explain: DataBuilder for TrainDataset
+
+class TrainDataBuilder(object):
+    def __init__(self, train_list:str, train_path:str, num_frames:int):
         self.num_frames = num_frames
         # Load and configure augmentation files
 #         self.noisetypes = ['noise','speech','music']
@@ -42,8 +57,10 @@ class DataBuilder(object):
 #             self.noiselist[file.split('/')[-4]].append(file)
 #         self.rir_files  = glob.glob(os.path.join(rir_path,'*/*/*.wav'))
 
-        self.data_label, self.data_list = [], []
+        self.data_label:list = list()
+        self.data_list:list = list()
         lines = open(train_list).read().splitlines()
+
         DictionaryKeys = list(set([x.split()[0] for x in lines]))
         DictionaryKeys.sort()
         DictionaryKeys = {key: ii for ii, key in enumerate(DictionaryKeys)}
@@ -54,7 +71,7 @@ class DataBuilder(object):
             self.data_label.append(speaker_label)
             self.data_list.append(file_name)
 
-        self.pad2d = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i-a.shape[1]))))
+        self.padding1DTo2D = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
 
 
     def __getitem__(self, index):
@@ -62,7 +79,7 @@ class DataBuilder(object):
 
         y, sr = librosa.load(self.data_list[index], sr=44100)
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=int(0.02 * sr), hop_length=int(0.01 * sr))
-        padded_mfcc = self.pad2d(mfcc, 40)
+        padded_mfcc = self.padding1DTo2D(mfcc, 40)
         # Data Augmentation
 #         augtype = random.randint(0,5)
 #         if augtype == 0:   # Original
