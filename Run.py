@@ -12,8 +12,7 @@ model = TestingModel().cuda()
 #model.load_state_dict(torch.load('./best_model.pt'))
 criterion = AAM_Softmax(n_class = 1211, margin=0.35, scale=30).cuda()
 
-optimizer = optim.AdamW(list(model.parameters()) + list(criterion.parameters()), lr=2e-4)
-
+optimizer = optim.AdamW(list(model.parameters()) + list(criterion.parameters()), lr=1e-4)
 TrainingSet = TrainDataBuilder("./data/VoxCeleb1/train_list.txt", "./data/VoxCeleb1/train", 300)
 TrainDatasetLoader = DataLoader(TrainingSet, batch_size = 64, shuffle = True, num_workers = 10, drop_last = True)
 ValidSet = TestDataLoader('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test', 300,10)

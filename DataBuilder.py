@@ -29,13 +29,11 @@ class TestDataLoader(Dataset):
             file_name = os.path.join(test_path, line)
             self.data_list.append(file_name)
 
-        # Conv2D-Based Model need to change the MFCC Data, so we use this padding1DTo2D function
-        self.padding1DTo2D = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
 
     def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
         y, sr = librosa.load(self.data_list[index], sr=44100)
-        y = self.pad_dataset(y, 44100 * 8)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
+        y = self.pad_dataset(y, 44100 * 12)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=80)
         data = np.expand_dims(mfcc, axis=-1)
 
         return data, self.data_list[index]
@@ -97,8 +95,8 @@ class TrainDataBuilder(Dataset):
         # Read the utterance and randomly select the segment
 
         y, sr = librosa.load(self.data_list[index], sr=44100)
-        y = self.pad_dataset(y, 44100*8)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
+        y = self.pad_dataset(y, 44100*12)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=80)
         data = np.expand_dims(mfcc, axis=-1)
 
         # Data Augmentation

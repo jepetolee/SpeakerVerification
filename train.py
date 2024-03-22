@@ -6,13 +6,16 @@ import torch.nn as nn
 from tqdm import tqdm
 from AAM_Softmax import computeEER
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 def train(model, optimizer, loss_function, train_loader,valid_loader, epoch):
     model.train()
     lowest_eer = 999
-
+    scheduler = CosineAnnealingWarmRestarts(optimizer,
+                                              T_0=10,
+                                              T_mult=2)
     for iteration in range(epoch):
-        train_loss, correct ,total =0,0,0
+        train_loss, correct =0,0
 
         with tqdm(iter(train_loader)) as pbar:
             for inputs, targets in pbar:
@@ -20,21 +23,19 @@ def train(model, optimizer, loss_function, train_loader,valid_loader, epoch):
 
                 optimizer.zero_grad()
                 outputs = model(inputs)
-                loss, precision = loss_function(outputs, targets)
+                loss, _ = loss_function(outputs, targets)
                 loss.backward()
                 optimizer.step()
 
                 train_loss += loss.item()
-                _, predicted = outputs.max(1)
-                total += targets.size(0)
-                correct += predicted.eq(targets).sum().item()
 
         valid_eer = valid(model, valid_loader)
+        scheduler.step()
         if valid_eer < lowest_eer:
             lowest_eer = valid_eer
             torch.save(model.state_dict(),'./best_model.pt')
 
-        print(f'Epoch: {iteration} | Train Loss: {train_loss/len(train_loader):.3f}  | Train Acc: {100. * correct / total:.3f}')
+        print(f'Epoch: {iteration} | Train Loss: {train_loss/len(train_loader):.3f} ')
         print(f'Valid EER: {valid_eer:.3f}, Best EER: {lowest_eer:}')
 
 
