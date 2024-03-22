@@ -2,14 +2,17 @@
 # -*- encoding: utf-8 -*-
 
 import os ,random,numpy,soundfile,torch,librosa ,itertools
+
+import numpy as np
 from scipy import signal
 from torch.utils.data import Dataset
+from typing import Tuple
 
-# TestDataLoader (str, str, int, int)
 # explain: DataLoader for TestData, it helps to valid function in train.py,
 #          provide datas with list
 class TestDataLoader(Dataset):
     def __init__(self, test_list:str, test_path:str, eval_frames:int, num_eval:int):
+
         self.max_frames:int = eval_frames
         self.num_eval:int   = num_eval
         self.data_list:list = list()
@@ -26,23 +29,40 @@ class TestDataLoader(Dataset):
             file_name = os.path.join(test_path, line)
             self.data_list.append(file_name)
 
-        # Conv2D-Based Model need to change the MFCC Data, so we use this pad2d function
+        # Conv2D-Based Model need to change the MFCC Data, so we use this padding1DTo2D function
         self.padding1DTo2D = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
 
-    def __getitem__(self, index:int):
+    def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
         y, sr = librosa.load(self.data_list[index], sr=44100)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=int(0.02 * sr), hop_length=int(0.01 * sr))
-        padded_mfcc = self.padding1DTo2D(mfcc, 40)
+        y = self.pad_dataset(y, 44100 * 8)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
+        data = np.expand_dims(mfcc, axis=-1)
 
-        return padded_mfcc, self.data_list[index]
+        return data, self.data_list[index]
 
-    def __len__(self):
+    def __len__(self)->int:
         return len(self.data_list)
+
+    def pad_dataset(self, data, audio_length):
+        # random  padding / offset
+        if len(data) > audio_length:
+            max_offset = len(data) - audio_length
+            offset = np.random.randint(max_offset)
+            data = data[offset:(audio_length + offset)]
+        # pad if data is smaller
+        else:
+            if audio_length > len(data):
+                max_offset = audio_length - len(data)
+                offset = np.random.randint(max_offset)
+            else:
+                offset = 0
+            data = np.pad(data, (offset, audio_length - len(data) - offset), "constant")
+        return data
 
 # TrainDataBuilder (str,str,int)
 # explain: DataBuilder for TrainDataset
 
-class TrainDataBuilder(object):
+class TrainDataBuilder(Dataset):
     def __init__(self, train_list:str, train_path:str, num_frames:int):
         self.num_frames = num_frames
         # Load and configure augmentation files
@@ -63,7 +83,7 @@ class TrainDataBuilder(object):
 
         DictionaryKeys = list(set([x.split()[0] for x in lines]))
         DictionaryKeys.sort()
-        DictionaryKeys = {key: ii for ii, key in enumerate(DictionaryKeys)}
+        DictionaryKeys = {key: index for index, key in enumerate(DictionaryKeys)}
 
         for index, line in enumerate(lines):
             speaker_label = DictionaryKeys[line.split()[0]]
@@ -71,15 +91,16 @@ class TrainDataBuilder(object):
             self.data_label.append(speaker_label)
             self.data_list.append(file_name)
 
-        self.padding1DTo2D = lambda a, i: a[:, 0:i] if a.shape[1] > i else numpy.hstack((a, numpy.zeros((a.shape[0], i - a.shape[1]))))
 
 
-    def __getitem__(self, index):
+    def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
         # Read the utterance and randomly select the segment
 
         y, sr = librosa.load(self.data_list[index], sr=44100)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=int(0.02 * sr), hop_length=int(0.01 * sr))
-        padded_mfcc = self.padding1DTo2D(mfcc, 40)
+        y = self.pad_dataset(y, 44100*8)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
+        data = np.expand_dims(mfcc, axis=-1)
+
         # Data Augmentation
 #         augtype = random.randint(0,5)
 #         if augtype == 0:   # Original
@@ -95,19 +116,35 @@ class TrainDataBuilder(object):
 #         elif augtype == 5: # Television noise
 #             audio = self.add_noise(audio, 'speech')
 #             audio = self.add_noise(audio, 'music')
-        return torch.tensor(padded_mfcc).T, self.data_label[index]
+        return torch.tensor(data), self.data_label[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data_list)
 
-    def add_rev(self, audio):
+    def pad_dataset(self, data, audio_length):
+        # random  padding / offset
+        if len(data) > audio_length:
+            max_offset = len(data) - audio_length
+            offset = np.random.randint(max_offset)
+            data = data[offset:(audio_length + offset)]
+        # pad if data is smaller
+        else:
+            if audio_length > len(data):
+                max_offset = audio_length - len(data)
+                offset = np.random.randint(max_offset)
+            else:
+                offset = 0
+            data = np.pad(data, (offset, audio_length - len(data) - offset), "constant")
+        return data
+
+    def add_rev(self, audio) -> np.ndarray:
         rir_file    = random.choice(self.rir_files)
         rir, sr     = soundfile.read(rir_file)
         rir         = numpy.expand_dims(rir.astype(numpy.float32),0)
         rir         = rir / numpy.sqrt(numpy.sum(rir**2))
         return signal.convolve(audio, rir, mode='full')[:,:self.num_frames * 160 + 240]
 
-    def add_noise(self, audio, noisecat):
+    def add_noise(self, audio, noisecat) -> np.ndarray:
         clean_db    = 10 * numpy.log10(numpy.mean(audio ** 2)+1e-4)
         numnoise    = self.numnoise[noisecat]
         noiselist   = random.sample(self.noiselist[noisecat], random.randint(numnoise[0],numnoise[1]))

@@ -5,24 +5,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-import numpy
+import numpy as np
+from typing import Tuple
 from sklearn import metrics
 
-# makeEERScore (list,list) --> float
 # explain: build EER from scores and labels
-def makeEERScore(scores:list, labels:list):
+def computeEER(scores:list, labels:list)->float:
 
     fpr, tpr, thresholds = metrics.roc_curve(labels, scores, pos_label=1)
     fnr = 1 - tpr
-
-    error_index = numpy.nanargmin(numpy.absolute((fnr - fpr)))
-    eer = max(fpr[error_index], fnr[error_index]) * 100
+    eer = fpr[np.nanargmin(np.absolute((fnr - fpr)))]
     return eer
 
-
-# makeAccuracy( torch.tensor, torch.tensor, tuple ) --> list
-# explain: which works on AAM-Softmax, make top_k accurancy for list
-def makeAccuracy(output:torch.tensor, target:torch.tensor, top_k:tuple=(1,)):
+# explain: which works on AAM-Softmax, make top_k accuracy for list
+def makeAccuracy(output:torch.Tensor, target:torch.Tensor, top_k:tuple=(1,))->Tuple[torch.Tensor,torch.Tensor,float]:
 
     max_k:int = max(top_k)
     batch_size = target.size(0)
@@ -40,14 +36,14 @@ def makeAccuracy(output:torch.tensor, target:torch.tensor, top_k:tuple=(1,)):
 
 # Adapted from https://github.com/wujiyang/Face_Pytorch
 class AAM_Softmax(nn.Module):
-    def __init__(self, n_class:int, margin:float, s):
+    def __init__(self, n_class:int, margin:float, scale:int):
         super(AAM_Softmax, self).__init__()
 
         self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 192), requires_grad=True)
         nn.init.xavier_normal_(self.weight, gain=1)
-        
+
         self.margin = margin
-        self.s = s
+        self.scale:int = scale
     
         self.AngularLoss = nn.CrossEntropyLoss()
        
@@ -56,7 +52,7 @@ class AAM_Softmax(nn.Module):
         self.threshold = math.cos(math.pi - self.margin)
         self.mm = math.sin(math.pi - self.margin) * self.margin
 
-    def forward(self, x, label=None):
+    def forward(self, x:torch.Tensor, label:torch.Tensor=None)-> Tuple[torch.Tensor, torch.Tensor, tuple]:
         cosine = F.linear(F.normalize(x), F.normalize(self.weight))
         sine = torch.sqrt((1.0 - torch.mul(cosine, cosine)).clamp(0, 1))
 
@@ -67,7 +63,7 @@ class AAM_Softmax(nn.Module):
         one_hot.scatter_(1, label.view(-1, 1), 1)
 
         output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
-        output = output * self.s
+        output = output * self.scale
 
         loss = self.AngularLoss(output, label)
 
