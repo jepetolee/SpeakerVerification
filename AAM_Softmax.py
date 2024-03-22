@@ -14,7 +14,9 @@ def computeEER(scores:list, labels:list)->float:
 
     fpr, tpr, thresholds = metrics.roc_curve(labels, scores, pos_label=1)
     fnr = 1 - tpr
-    eer = fpr[np.nanargmin(np.absolute((fnr - fpr)))]
+
+    idxE = np.nanargmin(np.absolute((fnr - fpr)))
+    eer = max(fpr[idxE], fnr[idxE]) * 100
     return eer
 
 # explain: which works on AAM-Softmax, make top_k accuracy for list
