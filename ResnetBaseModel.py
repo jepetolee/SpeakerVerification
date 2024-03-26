@@ -101,7 +101,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=256, zero_init_residual=False,
+    def __init__(self, block, layers, in_channel=80,inplane=128,embedding_size=3000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
@@ -109,7 +109,7 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.inplanes = 128
+        self.inplanes = inplane
         self.dilation = 1
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
@@ -120,7 +120,7 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(80, self.inplanes, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
@@ -133,7 +133,7 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(512 * block.expansion, embedding_size)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -198,13 +198,12 @@ class ResNet(nn.Module):
         return self._forward_impl(x)
 
 
-def _resnet(arch, block, layers, pretrained, progress, **kwargs):
-    model = ResNet(block, layers, **kwargs)
+def _resnet(arch, block, layers, pretrained, channel_size, inplane, embedding_size, **kwargs):
+    model = ResNet(block, layers,in_channel=channel_size,inplane=inplane,embedding_size=embedding_size, **kwargs)
     if pretrained:
-        model.load_state_dict(torch.load('./best_model.pt'))
+        model.load_state_dict(torch.load('best_model_MFCC_16.882290562036058.pt'))
     return model
 
-def resnet18(pretrained=False, progress=True, **kwargs):
+def resnet18(pretrained=False,channel_size=80,inplane=128, embedding_size=3000, **kwargs):
 
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
-                   **kwargs)
+    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained,channel_size, inplane,embedding_size,**kwargs)
