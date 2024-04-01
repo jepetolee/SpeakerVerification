@@ -25,7 +25,7 @@ class BasicBlock(nn.Module):
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
@@ -51,11 +51,6 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
-    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
-    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
-    # This variant is also known as ResNet V1.5 and improves accuracy according to
-    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
 
     expansion = 4
 
@@ -101,7 +96,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, in_channel=80,inplane=128,embedding_size=3000, zero_init_residual=False,
+    def __init__(self, block, layers, in_channel=80,inplane=128,embedding_size=192, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
@@ -123,7 +118,7 @@ class ResNet(nn.Module):
         self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
@@ -200,10 +195,8 @@ class ResNet(nn.Module):
 
 def _resnet(arch, block, layers, pretrained, channel_size, inplane, embedding_size, **kwargs):
     model = ResNet(block, layers,in_channel=channel_size,inplane=inplane,embedding_size=embedding_size, **kwargs)
-    if pretrained:
-        model.load_state_dict(torch.load('best_model_MFCC_16.882290562036058.pt'))
     return model
 
-def resnet18(pretrained=False,channel_size=80,inplane=128, embedding_size=3000, **kwargs):
+def resnet18(pretrained=False,channel_size=80,inplane=128, embedding_size=192, **kwargs):
 
     return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained,channel_size, inplane,embedding_size,**kwargs)

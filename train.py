@@ -6,14 +6,12 @@ import torch.nn as nn
 from tqdm import tqdm
 from AAM_Softmax import computeEER
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import CyclicLR
 
 def train(model, optimizer, loss_function, train_loader,valid_loader, epoch,model_link):
     model.train()
     lowest_eer = 999
-    scheduler = CosineAnnealingWarmRestarts(optimizer,
-                                              T_0=20,
-                                              T_mult=2)
+    scheduler = CyclicLR(optimizer,base_lr=1e-8,max_lr=1e-3,step_size_up=6500,mode='triangular2',cycle_momentum=False)
 
     for iteration in range(epoch):
         train_loss, correct =0,0
@@ -27,14 +25,13 @@ def train(model, optimizer, loss_function, train_loader,valid_loader, epoch,mode
                 loss, _ = loss_function(outputs, targets)
                 loss.backward()
                 optimizer.step()
-
+                scheduler.step()
                 train_loss += loss.item()
 
         valid_eer = valid(model, valid_loader)
-        scheduler.step()
         if valid_eer < lowest_eer:
             lowest_eer = valid_eer
-            torch.save(model.state_dict(), model_link+"_"+str(lowest_eer)+'.pt')
+            torch.save(model.state_dict(), model_link+'.pt')
 
         print(f'Epoch: {iteration} | Train Loss: {train_loss/len(train_loader):.3f} ')
         print(f'Valid EER: {valid_eer:.3f}, Best EER: {lowest_eer:}')
