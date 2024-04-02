@@ -19,29 +19,12 @@ def computeEER(scores:list, labels:list)->float:
     eer = max(fpr[idxE], fnr[idxE]) * 100
     return eer
 
-# explain: which works on AAM-Softmax, make top_k accuracy for list
-def makeAccuracy(output:torch.Tensor, target:torch.Tensor, top_k:tuple=(1,))->Tuple[torch.Tensor,torch.Tensor,float]:
-
-    max_k:int = max(top_k)
-    batch_size = target.size(0)
-    _, pred = output.topk(max_k, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-    res:list = list()
-
-    for k in top_k:
-        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-        res.append(correct_k.mul_(100.0 / batch_size))
-    return res
-
-
 # Adapted from https://github.com/wujiyang/Face_Pytorch
 class AAM_Softmax(nn.Module):
     def __init__(self, n_class:int, margin:float, scale:int):
         super(AAM_Softmax, self).__init__()
 
-        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 1000), requires_grad=True)
+        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 512), requires_grad=True)
         nn.init.xavier_normal_(self.weight, gain=1)
 
         self.margin = margin
@@ -69,4 +52,4 @@ class AAM_Softmax(nn.Module):
 
         loss = self.AngularLoss(output, label)
 
-        return loss, makeAccuracy(output.detach(), label.detach(), top_k=(1,))[0]
+        return loss

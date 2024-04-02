@@ -2,12 +2,12 @@ import numpy as np
 import torch, random,os
 import numpy.typing as NumpyType
 import torch.nn as nn
-
+import wandb
 from tqdm import tqdm
 from AAM_Softmax import computeEER
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CyclicLR
-
+from pytorch_multilabel_balanced_sampler.samplers import BaseMultilabelBalancedSampler
 def train(model, optimizer, loss_function, train_loader,valid_loader, epoch,model_link):
     model.train()
     lowest_eer = 999
@@ -19,12 +19,15 @@ def train(model, optimizer, loss_function, train_loader,valid_loader, epoch,mode
         with tqdm(iter(train_loader)) as pbar:
             for inputs, targets in pbar:
                 inputs, targets = inputs.cuda(), targets.cuda()
-
+                def closure():
+                    loss = loss_function(model(inputs),targets)
+                    loss.backward()
+                    return loss
                 optimizer.zero_grad()
                 outputs = model(inputs)
-                loss, _ = loss_function(outputs, targets)
+                loss = loss_function(outputs, targets)
                 loss.backward()
-                optimizer.step()
+                optimizer.step(closure)
                 scheduler.step()
                 train_loss += loss.item()
 
@@ -35,6 +38,7 @@ def train(model, optimizer, loss_function, train_loader,valid_loader, epoch,mode
 
         print(f'Epoch: {iteration} | Train Loss: {train_loss/len(train_loader):.3f} ')
         print(f'Valid EER: {valid_eer:.3f}, Best EER: {lowest_eer:}')
+        wandb.log({"valid_eer": valid_eer,"loss":train_loss/len(train_loader)})
 
 
 # valid
