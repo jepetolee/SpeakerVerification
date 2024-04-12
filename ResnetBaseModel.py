@@ -197,6 +197,6 @@ def _resnet(arch, block, layers, pretrained, channel_size, inplane, embedding_si
     model = ResNet(block, layers,in_channel=channel_size,inplane=inplane,embedding_size=embedding_size, **kwargs)
     return model
 
-def resnet18(pretrained=False,channel_size=80,inplane=128, embedding_size=192, **kwargs):
+def resnet18(pretrained=False,channel_size=80,inplane=64, embedding_size=192, **kwargs):
 
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained,channel_size, inplane,embedding_size,**kwargs)
+    return _resnet('resnet18', BasicBlock, [3, 4, 6, 3], pretrained,channel_size, inplane,embedding_size,**kwargs)

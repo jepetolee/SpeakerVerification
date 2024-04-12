@@ -7,23 +7,22 @@ import numpy as np
 from scipy import signal
 from torch.utils.data import Dataset
 from typing import Tuple
-import  torchaudio.transforms as AudioT
-import torch_dct as dct
-import torch
-import math
+
+
+
+import math, torch, torchaudio
+import torch.nn as nn
+import torch.nn.functional as F
+
 # explain: DataLoader for TestData, it helps to valid function in train.py,
 #          provide datas with list
 
 
-
 class TestDataLoader(Dataset):
-    def __init__(self, test_list:str, test_path:str, mel_spec=False):
+    def __init__(self, test_list:str, test_path:str,window_size=400, hop_size=160,window_fn=torch.hann_window,n_mel=80):
+        self.n_mel = n_mel
 
-        self.MelSpec = AudioT.MelSpectrogram(win_length=400, hop_length=160, n_mels=80, n_fft=412, f_min=20,
-                                              f_max=7600,
-                                              window_fn=torch.hamming_window, sample_rate=16000)
         self.data_list:list = list()
-        self.mel_spec:bool = mel_spec
 
         with open(test_list) as f:
             lines = f.readlines()
@@ -39,37 +38,26 @@ class TestDataLoader(Dataset):
 
     def loadWAV(self, filename):
 
-        # Maximum audio length
-        audio_length =  300 * 160 + 240
-
         # Read wav file and convert to torch tensor
-        data, sr = librosa.load(filename, sr=16000)
 
-        if len(data) > audio_length:
-            max_offset = len(data) - audio_length
-            offset = np.random.randint(max_offset)
-            data = data[offset:(audio_length + offset)]
-
-        else:
-            if audio_length > len(data):
-                max_offset = audio_length - len(data)
-                offset = np.random.randint(max_offset)
-            else:
-                offset = 0
-            data = np.pad(data, (offset, audio_length - len(data) - offset), "constant")
+        audio, sr = librosa.load(filename, sr=16000)
+        max_audio = 300 * 160 + 240
+        if audio.shape[0] <= max_audio:
+            shortage = max_audio - audio.shape[0]
+            audio = np.pad(audio, (0, shortage), 'wrap')
+        feats = []
+        startframe = np.linspace(0, audio.shape[0] - max_audio, num=5)
+        for asf in startframe:
+            feats.append(audio[int(asf):int(asf) + max_audio])
+        feats = np.stack(feats, axis=0).astype(np.float32)
+        data = torch.FloatTensor(feats).float()
 
         return data
 
     def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
         data = self.loadWAV(self.data_list[index])
-        data = self.MelSpec(torch.from_numpy(data))
-        data = torch.log(data + 1e-8)
-        if not self.mel_spec:
-            data = dct.dct(data, norm='ortho')
-            data = data - torch.mean(data, dim=-1, keepdim=True)
-            data = data
 
-        return data.reshape(1, 80, -1), self.data_list[index]
+        return data, self.data_list[index]
 
     def __len__(self)->int:
         return len(self.data_list)
@@ -79,11 +67,9 @@ class TestDataLoader(Dataset):
 # explain: DataBuilder for TrainDataset
 import glob
 class TrainDataBuilder(Dataset):
-    def __init__(self, train_list:str, train_path:str,mel_spec:bool=False):
+    def __init__(self, train_list:str, train_path:str,window_size=400, hop_size=160,window_fn=torch.hann_window,n_mel=80):
+        self.n_mel = n_mel
 
-        self.MelSpec = AudioT.MelSpectrogram(win_length=400, hop_length=160, n_mels=80, n_fft=512, f_min=20,
-                                              f_max=7600,
-                                              window_fn=torch.hamming_window, sample_rate=16000)
 
         self.noisetypes = ['noise', 'speech', 'music']
         self.noisesnr = {'noise': [0, 15], 'speech': [13, 20], 'music': [5, 15]}
@@ -98,7 +84,6 @@ class TrainDataBuilder(Dataset):
         self.rir_files = glob.glob(os.path.join("./RIRS_NOISES/simulated_rirs", '*/*/*.wav'))
         self.data_label:list = list()
         self.data_list:list = list()
-        self.mel_spec:bool = mel_spec
         lines = open(train_list).read().splitlines()
 
         DictionaryKeys = list(set([x.split()[0] for x in lines]))
@@ -114,16 +99,15 @@ class TrainDataBuilder(Dataset):
 
     def loadWAV(self,filename):
 
-        audio, sr = librosa.load(filename, sr=16000)
-        length = 200 * 160 + 240
+        audio, sr = soundfile.read(filename)
+        length = 300 * 160+240
         if audio.shape[0] <= length:
             shortage = length - audio.shape[0]
             audio = np.pad(audio, (0, shortage), 'wrap')
         start_frame = np.int64(random.random() * (audio.shape[0] - length))
         audio = audio[start_frame:start_frame + length]
         audio = np.stack([audio], axis=0)
-
-        augtype = random.randint(0, 6)
+        """        augtype = random.randint(0, 6)
         if augtype < 2:  # Original
             audio = audio
         elif augtype == 2:  # Reverberation
@@ -136,21 +120,17 @@ class TrainDataBuilder(Dataset):
             audio = self.add_noise(audio, 'noise')
         elif augtype == 6:  # Television noise
             audio = self.add_noise(audio, 'speech')
-            audio = self.add_noise(audio, 'music')
-        return audio
+            audio = self.add_noise(audio, 'music')"""
+        return torch.tensor(audio[0]).float()
 
     def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
         data = self.loadWAV(self.data_list[index])
-        data = self.MelSpec(torch.from_numpy(data.astype(np.float32)))
-        data = torch.log(data + 1e-8)
-        data = AudioT.TimeMasking(time_mask_param=random.randint(0, 10))(data)
-        data = AudioT.FrequencyMasking(freq_mask_param=random.randint(0, 15))(data)
-        if not self.mel_spec:
-            data = dct.dct(data, norm='ortho')
-            data = data - torch.mean(data, dim=-1, keepdim=True)
-            data = data
 
-        return data.reshape(1, 80, -1), self.data_label[index]
+        #data = AudioT.TimeMasking(time_mask_param=random.randint(0, 10))(data)
+       # data = AudioT.FrequencyMasking(freq_mask_param=random.randint(0, 15))(data)
+
+
+        return data, self.data_label[index]
 
 
     def __len__(self) -> int:
@@ -169,8 +149,8 @@ class TrainDataBuilder(Dataset):
         noiselist = random.sample(self.noiselist[noisecat], random.randint(numnoise[0], numnoise[1]))
         noises = []
         for noise in noiselist:
-            noiseaudio, sr = librosa.load(noise, sr=16000)
-            length = 200 * 160 + 240
+            noiseaudio, sr = librosa.load(noise)
+            length = 300 * 160 + 240
             if noiseaudio.shape[0] <= length:
                 shortage = length - noiseaudio.shape[0]
                 noiseaudio = np.pad(noiseaudio, (0, shortage), 'wrap')

@@ -14,7 +14,7 @@ def blackBoxFunctionForLearningRateAndBatchSize(batch_size, learning_rate,loss_w
     else:
         batch_size = 256
 
-    return 100 - RunWithBatchArguments(batch_size=batch_size, lr=learning_rate,num_epochs=2, loss_weight_decay=loss_weight_decay, model_weight_decay=model_weight_decay)
+    return 100 - RunWithArguments(batch_size=batch_size, lr=learning_rate, num_epochs=2, loss_weight_decay=loss_weight_decay, model_weight_decay=model_weight_decay)
 
 
 def blackBoxFunctionForEverything(#batch_size, learning_rate,loss_weight_decay, model_weight_decay,
@@ -46,7 +46,7 @@ def blackBoxFunctionForEverything(#batch_size, learning_rate,loss_weight_decay, 
     else:
         n_mel = 96
 
-    return 100 - RunWithBatchArguments(# batch_size=batch_size, lr=learning_rate,num_epochs=2, loss_weight_decay=loss_weight_decay, model_weight_decay=model_weight_decay,
+    return 100 - RunWithArguments(# batch_size=batch_size, lr=learning_rate,num_epochs=2, loss_weight_decay=loss_weight_decay, model_weight_decay=model_weight_decay,
                                        window_size=int(window_size), hop_size=int(hop_size),window_fn=window_fn,n_mel=n_mel,
                                        margin=margin,scale=int(scale))
 

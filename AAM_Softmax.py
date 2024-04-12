@@ -19,16 +19,29 @@ def computeEER(scores:list, labels:list)->float:
     eer = max(fpr[idxE], fnr[idxE]) * 100
     return eer
 
+
+def accuracy(output, target, topk=(1,)):
+    maxk = max(topk)
+    batch_size = target.size(0)
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / batch_size))
+
+    return res
 # Adapted from https://github.com/wujiyang/Face_Pytorch
 class AAM_Softmax(nn.Module):
     def __init__(self, n_class:int, margin:float, scale:int):
         super(AAM_Softmax, self).__init__()
 
-        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 512), requires_grad=True)
+        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 192), requires_grad=True)
         nn.init.xavier_normal_(self.weight, gain=1)
 
         self.margin = margin
-        self.scale:int = scale
+        self.scale:float = float(scale)
     
         self.AngularLoss = nn.CrossEntropyLoss()
        
@@ -49,7 +62,7 @@ class AAM_Softmax(nn.Module):
 
         output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
         output = output * self.scale
-
+        prec1 = accuracy(output.detach(), label.detach(), topk=(1,))[0]
         loss = self.AngularLoss(output, label)
 
-        return loss
+        return loss, prec1
