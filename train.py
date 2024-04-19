@@ -15,21 +15,23 @@ def train(model, optimizer,scheduler, loss_function, train_loader,valid_loader, 
   #  valid_eer = valid(model, valid_loader)
     for iteration in range(epoch):
         model.train()
-        train_loss, correct =0,0
+        train_loss, correct,index =0,0,0
 
         with tqdm(iter(train_loader)) as pbar:
             for inputs, targets in pbar:
                 inputs, targets = inputs.cuda(), targets.cuda()
                 #def closure():
-                 #   loss = loss_function(model(inputs),targets)
+                 #   loss,_ = loss_function(model(inputs),targets)
                   #  loss.backward()
                    # return loss
+
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 loss,acc = loss_function(outputs, targets)
                 loss.backward()
                 optimizer.step() #closure
-                correct += acc
+                correct += acc.item()
+                index += len(targets)
                 scheduler.step()
                 train_loss += loss.item()
 
@@ -38,9 +40,9 @@ def train(model, optimizer,scheduler, loss_function, train_loader,valid_loader, 
             lowest_eer = valid_eer
             torch.save(model.state_dict(), model_link+'.pt')
 
-        print(f'Epoch: {iteration} | Train Loss: {train_loss/len(train_loader):.3f}  ')
+        print(f'Epoch: {iteration} | Train Loss: {train_loss/len(train_loader):.3f} | Train Accuracy: {correct/index*len(targets)} ')
         print(f'Valid EER: {valid_eer:.3f}, Best EER: {lowest_eer:}')
-        wandb.log({"valid_eer": valid_eer,"loss":train_loss/len(train_loader) })
+        wandb.log({"valid_eer": valid_eer,"loss":train_loss/len(train_loader),"accuracy": {correct/index*len(targets)} })
     return lowest_eer
 
 

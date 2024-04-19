@@ -19,7 +19,7 @@ import torch.nn.functional as F
 
 
 class TestDataLoader(Dataset):
-    def __init__(self, test_list:str, test_path:str,window_size=400, hop_size=160,window_fn=torch.hann_window,n_mel=80):
+    def __init__(self, test_list:str, test_path:str,n_mel=80):
         self.n_mel = n_mel
 
         self.data_list:list = list()
@@ -67,7 +67,7 @@ class TestDataLoader(Dataset):
 # explain: DataBuilder for TrainDataset
 import glob
 class TrainDataBuilder(Dataset):
-    def __init__(self, train_list:str, train_path:str,window_size=400, hop_size=160,window_fn=torch.hann_window,n_mel=80):
+    def __init__(self, train_list:str, train_path:str,n_mel=80):
         self.n_mel = n_mel
 
 
@@ -107,7 +107,8 @@ class TrainDataBuilder(Dataset):
         start_frame = np.int64(random.random() * (audio.shape[0] - length))
         audio = audio[start_frame:start_frame + length]
         audio = np.stack([audio], axis=0)
-        """        augtype = random.randint(0, 6)
+
+        '''        augtype = random.randint(0, 6)
         if augtype < 2:  # Original
             audio = audio
         elif augtype == 2:  # Reverberation
@@ -120,15 +121,11 @@ class TrainDataBuilder(Dataset):
             audio = self.add_noise(audio, 'noise')
         elif augtype == 6:  # Television noise
             audio = self.add_noise(audio, 'speech')
-            audio = self.add_noise(audio, 'music')"""
+            audio = self.add_noise(audio, 'music')'''
         return torch.tensor(audio[0]).float()
 
     def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
         data = self.loadWAV(self.data_list[index])
-
-        #data = AudioT.TimeMasking(time_mask_param=random.randint(0, 10))(data)
-       # data = AudioT.FrequencyMasking(freq_mask_param=random.randint(0, 15))(data)
-
 
         return data, self.data_label[index]
 
@@ -138,10 +135,10 @@ class TrainDataBuilder(Dataset):
 
     def add_rev(self, audio):
         rir_file = random.choice(self.rir_files)
-        rir, sr = librosa.load(rir_file, sr=16000)
+        rir, sr = soundfile.read(rir_file)
         rir = np.expand_dims(rir.astype(np.float32), 0)
         rir = rir / np.sqrt(np.sum(rir ** 2))
-        return signal.convolve(audio, rir, mode='full')[:, :200 * 160 + 240]
+        return signal.convolve(audio, rir, mode='full')[:, :300 * 160 + 240]
 
     def add_noise(self, audio, noisecat):
         clean_db = 10 * np.log10(np.mean(audio ** 2) + 1e-4)
@@ -149,7 +146,7 @@ class TrainDataBuilder(Dataset):
         noiselist = random.sample(self.noiselist[noisecat], random.randint(numnoise[0], numnoise[1]))
         noises = []
         for noise in noiselist:
-            noiseaudio, sr = librosa.load(noise)
+            noiseaudio, sr = soundfile.read(noise)
             length = 300 * 160 + 240
             if noiseaudio.shape[0] <= length:
                 shortage = length - noiseaudio.shape[0]
