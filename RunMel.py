@@ -7,7 +7,7 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from train import train
-from Models.Model import ResNet34AveragePooling,ResNet34SE
+from Model.Model import ResNet34AveragePooling,ResNet34SE
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import numpy as np
 import wandb
