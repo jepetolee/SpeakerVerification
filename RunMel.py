@@ -7,7 +7,7 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from train import train
-from Model.Model import ResNet34AveragePooling,ResNet34SE
+from Model.Model import ResNet34AveragePooling,ResNet34SE ,ResNet34SEPointwise,ResNet34DoubleAttention
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import numpy as np
 import wandb
@@ -93,29 +93,37 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
     np.random.shuffle(indices)
     sampler = LeastSampledClassSampler(labels=dataset.y,indices=indices)
     TrainDatasetLoader = DataLoader(TrainingSet, batch_size = batch_size, shuffle = False, num_workers = 10, drop_last = True,sampler=sampler)
-    scheduler = CosineAnnealingLR(optimizer, T_max=len(TrainDatasetLoader) * (num_epochs+10))
+    scheduler = CosineAnnealingLR(optimizer, T_max=len(TrainDatasetLoader) * num_epochs)
     ValidSet = TestDataLoader('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test' ,
                               n_mel=n_mel)
     ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = False, num_workers = 10, drop_last = True)
     eer = train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel')
     wandb.finish()
     return eer
+if __name__ == '__main__':
+    RunWithArguments(ResNet34DoubleAttention, model_name='ResNet34DoubleAttention', batch_size=32, lr=5e-4,
+                     num_epochs=20, model_weight_decay=2e-5,
+                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
+                     margin=0.2, scale=30, SETYPE=None)
+    RunWithArguments(ResNet34SEPointwise, model_name='ResNet34SEPointwise', batch_size=32, lr=5e-4,
+                     num_epochs=20, model_weight_decay=2e-5,
+                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
+                     margin=0.2, scale=30, SETYPE=None)
+    RunWithArguments(ResNet34AveragePooling, model_name='Resnet34AveragePooling', batch_size=32, lr=5e-4,
+                     num_epochs=20, model_weight_decay=2e-5,
+                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
+                     margin=0.2, scale=30, SETYPE=None)
 
-
-
-
-RunWithArguments(ResNet34SE, 'ResNet34SE_SAP', batch_size=32, lr= 3e-4,
-                 num_epochs = 20, model_weight_decay= 2e-5,
-                 window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                 margin=0.2, scale=30,SETYPE='SAP')
 
 
 '''
-RunWithArguments(ResNet34AveragePooling, 'Resnet34AveragePooling', batch_size=32, lr= 3e-4,
-                 num_epochs = 20, model_weight_decay= 2e-5,
+
+    RunWithArguments(ResNet34SE, 'ResNet34SE_SAP', batch_size=32, lr= 5e-4,
+                 num_epochs = 30, model_weight_decay= 2e-5,
                  window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                 margin=0.2, scale=30,SETYPE=None)
-                 
+                 margin=0.2, scale=30,SETYPE='SAP')
+
+             
 RunWithArguments(ResNet34SE, 'ResNet34SE_ASP', batch_size=32, lr= 3e-4,
                  num_epochs = 20, model_weight_decay= 2e-5,
                  window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
