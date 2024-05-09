@@ -12,7 +12,7 @@ def train(model, optimizer,scheduler, loss_function, train_loader,valid_loader, 
 
     lowest_eer = 999
 
-  #  valid_eer = valid(model, valid_loader)
+    #valid_eer = valid(model, valid_loader)
     for iteration in range(epoch):
         model.train()
         train_loss, correct,index =0,0,0
@@ -55,7 +55,7 @@ def valid(model:torch.nn.Module, valid_loader:DataLoader):
 
             for data in input_datas:
                 with torch.no_grad():
-                    embeddings[data_path[0]] = F.normalize(model.forward(data.cuda()), p=2, dim=1).detach().cpu()
+                    embeddings[data_path[0]] = F.normalize(model(data.unsqueeze(0).cuda()), p=2, dim=1).detach().cpu()
 
 
     with open('./data/VoxCeleb1/trials.txt') as f:

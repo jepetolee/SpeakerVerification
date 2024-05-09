@@ -37,7 +37,7 @@ class AAM_Softmax(nn.Module):
     def __init__(self, n_class:int, margin:float, scale:int):
         super(AAM_Softmax, self).__init__()
 
-        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 256), requires_grad=True)
+        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, 512), requires_grad=True)
         nn.init.xavier_normal_(self.weight, gain=1)
 
         self.margin = margin

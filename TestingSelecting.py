@@ -1,13 +1,13 @@
 import torch
 import torch.optim as optim
 from AAM_Softmax import AAM_Softmax
-from DataBuilder import TrainDataBuilder,TestDataLoader
+from NewDataBuilder import TrainDataBuilder,TestDataLoader
 from pytorch_multilabel_balanced_sampler.samplers import LeastSampledClassSampler
 from torch.autograd import Variable
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from train import train
-from Model.Model import ResNet34AveragePooling,ResNet34SE ,ResNet34SEPointwise,ResNet34DoubleAttention ,ResNet34SEPointwiseMixtureOfExperts
+from trainSelecting import train,valid
+from Model.GatingConv import ResNet34AveragePoolingGating
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import numpy as np
 import wandb
@@ -15,7 +15,7 @@ import random
 
 
 
-def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
+def RunSelectingWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
                      num_epochs = 10, model_weight_decay= 2.3e-4,
                      window_size=400, hop_size=160, window_fn=torch.hann_window, n_mel=80,
                      margin=0.2, scale=30,SETYPE=None):
@@ -58,43 +58,24 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
 
 
     #optimizer = SAM(params=list(model.parameters())+list(criterion.parameters()),base_optimizer=optim.AdamW,lr=lr,weight_decay=2e-5)
-
+    model.load_state_dict(torch.load('./models/LogMel/LowestEERLogMel.pt'))
     optimizer = optim.AdamW(params=[{'params':model.parameters(),'weight_decay':2e-5},
                                     {'params':criterion.parameters(),
                                      'weight_decay':3e-4}]
                             ,lr=lr)
     TrainingSet = TrainDataBuilder("./data/VoxCeleb1/train_list.txt", "./data/VoxCeleb1/train",
                                    n_mel=n_mel)
-
-    class RandomMultilabelDataset(Dataset):
-        def __init__(self, *, n_examples, n_classes, mean_labels_per_example):
-            class_probabilities = torch.rand([n_classes])
-            class_probabilities = class_probabilities / sum(class_probabilities)
-            class_probabilities *= mean_labels_per_example
-            self.y = (torch.rand([n_examples, n_classes]) < class_probabilities).int()
-
-        def __len__(self):
-            return len(self.y)
-
-        def __getitem__(self, index):
-            return {"labels": Variable(torch.tensor(self.y[index]), requires_grad=False)}
-
-    dataset = RandomMultilabelDataset(
-            n_examples=len(TrainingSet),
-            n_classes=batch_size,
-            mean_labels_per_example=2 )
-
-    indices = list(range(len(dataset)))
-    np.random.shuffle(indices)
-    # sampler = LeastSampledClassSampler(labels=dataset.y,indices=indices)
     TrainDatasetLoader = DataLoader(TrainingSet, batch_size = batch_size, shuffle = True, num_workers = 10, drop_last = True)
-    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5,T_mult=2,eta_min=1e-7)
+
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=35,T_mult=2,eta_min=1e-7)
+
     ValidSet = TestDataLoader('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test' ,
                               n_mel=n_mel)
     ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = False, num_workers = 10, drop_last = True)
-    eer = train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel')
+    print(valid(model, ValidDatasetLoader))
+   # eer = train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel')
     wandb.finish()
-    return eer
+    return #eer
 
 if __name__ == '__main__':
     seed = 2024
@@ -104,13 +85,10 @@ if __name__ == '__main__':
     # np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    if deterministic:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
 
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
 
-    RunWithArguments(ResNet34AveragePooling, model_name='Resnet34AveragePooling', batch_size=32, lr=3e-4,
+    RunSelectingWithArguments(ResNet34AveragePoolingGating, model_name='ResNet34AveragePoolingGating', batch_size=32 , lr=1e-4,
                      num_epochs=35, model_weight_decay=2e-5,
                      window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
                      margin=0.2, scale=30, SETYPE=None)

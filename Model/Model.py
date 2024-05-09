@@ -24,7 +24,7 @@ class ResNet34AveragePooling(nn.Module):
 
             self.instancenorm = nn.InstanceNorm1d(80)
             self.model = resnet34Encoder(channel_size=1, inplane=64)
-            self.fc = nn.Linear(in_features=512,out_features=256)
+            self.fc = nn.Linear(in_features=512,out_features=512)
             self.avgpool = nn.AdaptiveAvgPool2d((1,1))
     def forward(self, input_tensor: torch.Tensor):
             x= self.MelSpec(input_tensor)+1e-6
@@ -68,16 +68,22 @@ class ResNet34SE(nn.Module):
             nn.Softmax(dim=2), )
 
             if self.encoder_type == "SAP":
-                self.fc = nn.Linear(in_features=2560, out_features=256)
+                self.fc = nn.Sequential(nn.Linear(in_features=2560, out_features=512),
+                                        nn.GELU(),
+                                        nn.BatchNorm1d(512),
+                                        nn.Linear(in_features=512, out_features=256))
             elif self.encoder_type == "ASP":
-                self.fc = nn.Linear(in_features=5120, out_features=256)
+                self.fc =  nn.Sequential(nn.Linear(in_features=5120, out_features=1024),
+                                        nn.GELU(),
+                                        nn.BatchNorm1d(1024),
+                                        nn.Linear(in_features=1024, out_features=256))
     def forward(self, input_tensor: torch.Tensor):
             x= self.MelSpec(input_tensor)+1e-6
             x = x.log()
           #  x = self.specaug(x)
             x = self.instancenorm(x).unsqueeze(1)
             x = self.model(x)
-
+            # B (C X F) S
             x = x.reshape((x.shape[0],-1,x.size()[-1]))
 
             w = self.attention(x)
@@ -85,7 +91,7 @@ class ResNet34SE(nn.Module):
             if self.encoder_type == "SAP":
                 x = torch.sum(x * w, axis=2)
             elif self.encoder_type == "ASP":
-                mu = torch.sum(x * w, axis=2)
+                mu = torch.mean(x * w, axis=2)
                 sg = torch.sum((x ** 2) * w, axis=2) - mu ** 2
                 sg = torch.clip(sg, min=1e-5)
                 sg = torch.sqrt(sg)
@@ -117,11 +123,7 @@ class ResNet34SEPointwise(nn.Module):
                 256, 512, kernel_size=(1,1)),
             nn.Softmax(dim=3))
 
-            self.GatingLayer = nn.Sequential(nn.Linear(5, 1),
-                                             nn.BatchNorm1d(512),
-                                             nn.GELU())
-
-            self.fc = nn.Linear(in_features=512, out_features=256)
+            self.fc = nn.Linear(in_features=2560, out_features=256)
     def forward(self, input_tensor: torch.Tensor):
             x= self.MelSpec(input_tensor)+1e-6
             x = x.log()
@@ -132,8 +134,6 @@ class ResNet34SEPointwise(nn.Module):
             w = self.attention(x)
 
             x = torch.sum(x * w, axis=-1)
-
-            x= self.GatingLayer(x)
 
             x = torch.flatten(x, 1)
             return self.fc(x)
@@ -162,9 +162,6 @@ class ResNet34DoubleAttention(nn.Module):
                 256, 512, kernel_size=(1,1)),
             nn.Softmax(dim=3))
 
-            self.FeedGForwardlayer = nn.Sequential(nn.Linear(5, 5),
-                                             nn.BatchNorm1d(512),
-                                             nn.GELU())
             self.attention2 = nn.Sequential(
                 nn.Conv1d(
                     512, 128, kernel_size=1),
@@ -188,10 +185,7 @@ class ResNet34DoubleAttention(nn.Module):
 
             w = self.attention(x)
 
-            skipConnection = torch.sum(x * w, axis=-1)
-
-            x= self.FeedGForwardlayer(skipConnection) +skipConnection
-
+            x = torch.sum(x * w, axis=-1)
 
             x = self.attention2(x)
 
@@ -199,3 +193,7 @@ class ResNet34DoubleAttention(nn.Module):
 
             x = torch.flatten(x, 1)
             return self.fc(x)
+
+
+
+
