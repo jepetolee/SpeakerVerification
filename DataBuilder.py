@@ -1,27 +1,20 @@
 #! /usr/bin/python
 # -*- encoding: utf-8 -*-
 
-import os ,random,librosa ,itertools, soundfile
-import torch.nn as  nn
+import os ,random,itertools, soundfile
 import numpy as np
 from scipy import signal
 from torch.utils.data import Dataset
 from typing import Tuple
-
-
-
-import math, torch, torchaudio
-import torch.nn as nn
-import torch.nn.functional as F
+import  torch
+import glob
 
 # explain: DataLoader for TestData, it helps to valid function in train.py,
 #          provide datas with list
 
-
 class TestDataLoader(Dataset):
     def __init__(self, test_list:str, test_path:str,n_mel=80):
         self.n_mel = n_mel
-
         self.data_list:list = list()
 
         with open(test_list) as f:
@@ -39,9 +32,8 @@ class TestDataLoader(Dataset):
     def loadWAV(self, filename):
 
         # Read wav file and convert to torch tensor
-
-        audio, sr = librosa.load(filename, sr=16000)
-        max_audio = 300 * 160 + 240
+        audio, sr = soundfile.read(filename)
+        max_audio = 300 * 160 + 240 # Our Sample Time(Sec) for BaseLine is 3 seconds(16000(sr) *3)
         if audio.shape[0] <= max_audio:
             shortage = max_audio - audio.shape[0]
             audio = np.pad(audio, (0, shortage), 'wrap')
@@ -65,12 +57,10 @@ class TestDataLoader(Dataset):
 
 # TrainDataBuilder (str,str,int)
 # explain: DataBuilder for TrainDataset
-import glob
+
 class TrainDataBuilder(Dataset):
     def __init__(self, train_list:str, train_path:str,n_mel=80):
         self.n_mel = n_mel
-
-
         self.noisetypes = ['noise', 'speech', 'music']
         self.noisesnr = {'noise': [0, 15], 'speech': [13, 20], 'music': [5, 15]}
         self.numnoise = {'noise': [1, 1], 'speech': [3, 8], 'music': [1, 1]}
@@ -100,28 +90,13 @@ class TrainDataBuilder(Dataset):
     def loadWAV(self,filename):
 
         audio, sr = soundfile.read(filename)
-        length = 300 * 160+240
+        length = 300 * 160 + 240 # Our Sample Time(Sec) for BaseLine is 3 seconds(16000(sr) *3)
         if audio.shape[0] <= length:
             shortage = length - audio.shape[0]
             audio = np.pad(audio, (0, shortage), 'wrap')
         start_frame = np.int64(random.random() * (audio.shape[0] - length))
         audio = audio[start_frame:start_frame + length]
         audio = np.stack([audio], axis=0)
-
-        '''        augtype = random.randint(0, 6)
-        if augtype < 2:  # Original
-            audio = audio
-        elif augtype == 2:  # Reverberation
-            audio = self.add_rev(audio)
-        elif augtype == 3:  # Babble
-            audio = self.add_noise(audio, 'speech')
-        elif augtype == 4:  # Music
-            audio = self.add_noise(audio, 'music')
-        elif augtype == 5:  # Noise
-            audio = self.add_noise(audio, 'noise')
-        elif augtype == 6:  # Television noise
-            audio = self.add_noise(audio, 'speech')
-            audio = self.add_noise(audio, 'music')'''
         return torch.tensor(audio[0]).float()
 
     def __getitem__(self, index:int) -> Tuple[torch.Tensor, str]:
@@ -160,5 +135,18 @@ class TrainDataBuilder(Dataset):
         noise = np.sum(np.concatenate(noises, axis=0), axis=0, keepdims=True)
         return noise + audio
 
-
-
+# DATA Augmentation is not allowed in this experiment
+        '''        augtype = random.randint(0, 6)
+        if augtype < 2:  # Original
+            audio = audio
+        elif augtype == 2:  # Reverberation
+            audio = self.add_rev(audio)
+        elif augtype == 3:  # Babble
+            audio = self.add_noise(audio, 'speech')
+        elif augtype == 4:  # Music
+            audio = self.add_noise(audio, 'music')
+        elif augtype == 5:  # Noise
+            audio = self.add_noise(audio, 'noise')
+        elif augtype == 6:  # Television noise
+            audio = self.add_noise(audio, 'speech')
+            audio = self.add_noise(audio, 'music')'''

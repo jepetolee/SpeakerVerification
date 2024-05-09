@@ -32,6 +32,7 @@ def accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(100.0 / batch_size))
 
     return res
+
 # Adapted from https://github.com/wujiyang/Face_Pytorch
 class AAM_Softmax(nn.Module):
     def __init__(self, n_class:int, margin:float, scale:int):

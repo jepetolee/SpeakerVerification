@@ -2,21 +2,13 @@
 # -*- encoding: utf-8 -*-
 
 import os ,random,librosa ,itertools, soundfile
-import torch.nn as  nn
 import numpy as np
 from scipy import signal
 from torch.utils.data import Dataset
 from typing import Tuple
-
-
-
-import math, torch, torchaudio
-import torch.nn as nn
-import torch.nn.functional as F
-
+import torch
 # explain: DataLoader for TestData, it helps to valid function in train.py,
 #          provide datas with list
-
 
 class TestDataLoader(Dataset):
     def __init__(self, test_list:str, test_path:str,n_mel=80):
@@ -39,7 +31,6 @@ class TestDataLoader(Dataset):
     def loadWAV(self, filename):
 
         # Read wav file and convert to torch tensor
-
         audio, sr = librosa.load(filename, sr=16000)
         max_audio = 300 * 160 + 240
         if audio.shape[0] <= max_audio:
@@ -77,12 +68,12 @@ class TrainDataBuilder(Dataset):
         self.numnoise = {'noise': [1, 1], 'speech': [3, 8], 'music': [1, 1]}
         self.noiselist = {}
 
-        augment_files = glob.glob(os.path.join("./musan", '*/*/*.wav'))
+        augment_files = glob.glob(os.path.join("../musan", '*/*/*.wav'))
         for file in augment_files:
             if file.split('/')[-3] not in self.noiselist:
                 self.noiselist[file.split('/')[-3]] = []
             self.noiselist[file.split('/')[-3]].append(file)
-        self.rir_files = glob.glob(os.path.join("./RIRS_NOISES/simulated_rirs", '*/*/*.wav'))
+        self.rir_files = glob.glob(os.path.join("../RIRS_NOISES/simulated_rirs", '*/*/*.wav'))
         self.data_label:list = list()
         self.data_list:list = list()
         lines = open(train_list).read().splitlines()

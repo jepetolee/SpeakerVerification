@@ -2,17 +2,11 @@ import torch
 import torch.optim as optim
 from AAM_Softmax import AAM_Softmax
 from NewDataBuilder import TrainDataBuilder,TestDataLoader
-from pytorch_multilabel_balanced_sampler.samplers import LeastSampledClassSampler
-from torch.autograd import Variable
-from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from trainSelecting import train,valid
+from trainSelecting import train
 from Model.GatingConv import ResNet34AveragePoolingGating
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-import numpy as np
 import wandb
-import random
-
 
 
 def RunSelectingWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
@@ -58,7 +52,7 @@ def RunSelectingWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4
 
 
     #optimizer = SAM(params=list(model.parameters())+list(criterion.parameters()),base_optimizer=optim.AdamW,lr=lr,weight_decay=2e-5)
-    model.load_state_dict(torch.load('./models/LogMel/LowestEERLogMel.pt'))
+    model.load_state_dict(torch.load('../models/LogMel/LowestEERLogMel.pt'))
     optimizer = optim.AdamW(params=[{'params':model.parameters(),'weight_decay':2e-5},
                                     {'params':criterion.parameters(),
                                      'weight_decay':3e-4}]
@@ -72,8 +66,8 @@ def RunSelectingWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4
     ValidSet = TestDataLoader('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test' ,
                               n_mel=n_mel)
     ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = False, num_workers = 10, drop_last = True)
-    print(valid(model, ValidDatasetLoader))
-   # eer = train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel')
+
+    eer = train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel')
     wandb.finish()
     return #eer
 

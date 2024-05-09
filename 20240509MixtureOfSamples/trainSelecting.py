@@ -58,7 +58,7 @@ def valid(model:torch.nn.Module, valid_loader:DataLoader):
                     embeddings[data_path[0]] = F.normalize(model(data.unsqueeze(0).cuda()), p=2, dim=1).detach().cpu()
 
 
-    with open('./data/VoxCeleb1/trials.txt') as f:
+    with open('../data/VoxCeleb1/trials.txt') as f:
         lines_of_test_dataset = f.readlines()
     for index, line in enumerate(lines_of_test_dataset):
 
@@ -67,8 +67,8 @@ def valid(model:torch.nn.Module, valid_loader:DataLoader):
         if len(data) == 2:
             data = [random.randint(0, 1)] + data
 
-        ref_feat = embeddings[os.path.join('./data/VoxCeleb1/test', data[1])]
-        com_feat = embeddings[os.path.join('./data/VoxCeleb1/test', data[2])]
+        ref_feat = embeddings[os.path.join('../data/VoxCeleb1/test', data[1])]
+        com_feat = embeddings[os.path.join('../data/VoxCeleb1/test', data[2])]
 
         all_scores.append(torch.mean(torch.matmul(ref_feat, com_feat.T)).detach().cpu().numpy())
         all_labels.append(int(data[0]))

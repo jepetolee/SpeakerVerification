@@ -9,10 +9,8 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
 def train(model, optimizer,scheduler, loss_function, train_loader,valid_loader, epoch,model_link):
-
-    lowest_eer = 999
-
-  #  valid_eer = valid(model, valid_loader)
+    lowest_eer = 9999 # this is big value that EER can changes when Lowest EER marked
+    #valid_eer = valid(model, valid_loader)
     for iteration in range(epoch):
         model.train()
         train_loss, correct,index =0,0,0
@@ -25,7 +23,7 @@ def train(model, optimizer,scheduler, loss_function, train_loader,valid_loader, 
                 outputs = model(inputs)
                 loss,acc = loss_function(outputs, targets)
                 loss.backward()
-                optimizer.step() #closure
+                optimizer.step()
                 correct += acc.item()
                 index += len(targets)
 

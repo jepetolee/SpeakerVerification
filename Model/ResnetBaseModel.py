@@ -1,6 +1,7 @@
-import torch
+#! /usr/bin/python
+# -*- encoding: utf-8 -*-
+
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):

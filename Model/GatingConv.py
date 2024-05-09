@@ -1,16 +1,18 @@
-import torchvision
+#! /usr/bin/python
+# -*- encoding: utf-8 -*-
+
 import torch.nn as  nn
 import torch
 from Model.ResnetBaseModel import ResNetWithoutFirstLayerEncoder
 import  torchaudio.transforms as AudioT
 import torch.nn.functional as F
-from Model.utils import PreEmphasis,FbankAug
-import math
+from Model.utils import PreEmphasis
+
 
 class GatingConv(nn.Module):
     def __init__(self, ):
         super(GatingConv, self).__init__()
-        self.conv1 =  nn.Conv2d(1, self.inplanes, kernel_size=(7,14), stride=2, padding=3,
+        self.conv1 =  nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.top_k =2
         self.gate = nn.Sequential( nn.Conv2d(1, 32, kernel_size=(5,15), stride=(2,4), padding=2, bias=False),

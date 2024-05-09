@@ -1,16 +1,11 @@
 #! /usr/bin/python
 # -*- encoding: utf-8 -*-
 
-import torchvision
 import torch.nn as  nn
 import torch
 from Model.ResnetBaseModel import resnet34Encoder
 import  torchaudio.transforms as AudioT
-import torch.nn.functional as F
 from Model.utils import PreEmphasis,FbankAug
-
-
-
 
 class ResNet34AveragePooling(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window):
@@ -37,13 +32,6 @@ class ResNet34AveragePooling(nn.Module):
 
             return self.fc(x)
 
-class Expert(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(Expert, self).__init__()
-        self.layer = nn.Linear(input_dim, output_dim)
-
-    def forward(self, x):
-        return F.gelu(self.layer(x))
 class ResNet34SE(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window,encoder_type="SAP"):
 
