@@ -111,6 +111,7 @@ class ResNet34SEPointwise(nn.Module):
                 256, 512, kernel_size=(1,1)),
             nn.Softmax(dim=3))
 
+
             self.fc = nn.Linear(in_features=2560, out_features=256)
     def forward(self, input_tensor: torch.Tensor):
             x= self.MelSpec(input_tensor)+1e-6
@@ -124,7 +125,7 @@ class ResNet34SEPointwise(nn.Module):
             x = torch.sum(x * w, axis=-1)
 
             x = torch.flatten(x, 1)
-            return self.fc(x)
+            return  self.fc(x)
 
 
 class ResNet34DoubleAttention(nn.Module):

@@ -7,7 +7,9 @@ from AAM_Softmax import AAM_Softmax
 from DataBuilder import TrainDataBuilder,TestDataLoader
 from torch.utils.data import DataLoader
 from train import train
+from Model.kernelNew import ResNet34KernelExaggerate
 from Model.Model import ResNet34AveragePooling,ResNet34SE ,ResNet34SEPointwise,ResNet34DoubleAttention
+
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
 
@@ -54,7 +56,7 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
                                     {'params': criterion.parameters(), 'weight_decay': AAM_softmax_weight_decay}],
                             lr=lr)
 
-    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2, eta_min=1e-7)
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=3, T_mult=9, eta_min=1e-7)
 
     # Build Train Dataset
     TrainingSet = TrainDataBuilder("./data/VoxCeleb1/train_list.txt", "./data/VoxCeleb1/train",n_mel=n_mel)
@@ -77,8 +79,8 @@ if __name__ == '__main__':
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
 
     # Running Functions, this can be expressed with Kind Of Tests
-    RunWithArguments(ResNet34AveragePooling, model_name='Resnet34AveragePooling', batch_size=32, lr=3e-4,
-                     num_epochs=35, model_weight_decay=2e-5,
+    RunWithArguments(ResNet34KernelExaggerate, model_name='ResNet34KernelExaggerate', batch_size=16, lr=1e-4,
+                     num_epochs=30, model_weight_decay=2e-5,
                      window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
                      margin=0.2, scale=30, SETYPE=None)
 
