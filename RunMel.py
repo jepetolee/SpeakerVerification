@@ -19,7 +19,7 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
                      window_size=400, hop_size=160, window_fn=torch.hann_window, n_mel=80,
                      margin=0.2, scale=30,SETYPE=None):
     # Setting The Project
-    wandb.init(project='SpeakerVerification Researching New Model', settings=wandb.Settings(console='off'))
+    wandb.init(project='SpeakerVerification Researching New Model 2', settings=wandb.Settings(console='off'))
     wandb.run.name = model_name
     wandb.run.save()
     args = {
@@ -79,18 +79,20 @@ if __name__ == '__main__':
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
 
     # Running Functions, this can be expressed with Kind Of Tests
-    RunWithArguments(ResNet34FWSESpectrogram, model_name='ResNet34FWSESpectrogram-pre-Emphasis', batch_size=16, lr=1e-4,
-                     num_epochs=30, model_weight_decay=2e-5,
-                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30, SETYPE=None)
 
 
-    RunWithArguments(ResNet34FWSE, model_name='ResNet34FWSE_no-pre-Emphasis', batch_size=32, lr=3e-4,
+
+    RunWithArguments(ResNet34FWSE, model_name='ResNet34FWSE', batch_size=32, lr=3e-4,
                      num_epochs=30, model_weight_decay=2e-5,
                      window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
                      margin=0.2, scale=30, SETYPE=None)
 
     RunWithArguments(ResNet34AveragePooling, model_name='ResNet34AveragePooling_no-pre-Emphasis', batch_size=32, lr=3e-4,
+                     num_epochs=30, model_weight_decay=2e-5,
+                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
+                     margin=0.2, scale=30, SETYPE=None)
+
+    RunWithArguments(ResNet34FWSESpectrogram, model_name='ResNet34FWSESpectrogram-pre-Emphasis', batch_size=16, lr=1e-4,
                      num_epochs=30, model_weight_decay=2e-5,
                      window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
                      margin=0.2, scale=30, SETYPE=None)

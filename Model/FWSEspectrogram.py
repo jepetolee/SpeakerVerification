@@ -155,7 +155,7 @@ class ResNet34FWSESpectrogram(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 256, window_function=torch.hamming_window):
 
             super(ResNet34FWSESpectrogram, self).__init__()
-            self.Spec =     AudioT.Spectrogram(win_length=window_length, hop_length=hopping_length,
+            self.Spec =   AudioT.Spectrogram(win_length=window_length, hop_length=hopping_length,
                                                                 n_fft=fft_size,
                                                                window_fn=window_function)
             #self.specaug = FbankAug()
