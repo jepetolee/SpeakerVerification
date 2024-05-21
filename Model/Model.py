@@ -11,10 +11,9 @@ class ResNet34AveragePooling(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window):
 
             super(ResNet34AveragePooling, self).__init__()
-            self.MelSpec = nn.Sequential(PreEmphasis(),
-                                         AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
+            self.MelSpec = AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
                                                                n_mels=mel_number, n_fft=fft_size,
-                                                               window_fn=window_function, sample_rate=16000))
+                                                               window_fn=window_function, sample_rate=16000)
             #self.specaug = FbankAug()
 
             self.instancenorm = nn.InstanceNorm1d(80)
@@ -92,7 +91,7 @@ class ResNet34SEPointwise(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window,encoder_type="SAP"):
 
             super(ResNet34SEPointwise, self).__init__()
-            self.MelSpec = nn.Sequential(PreEmphasis(),
+            self.MelSpec = nn.Sequential(
                                          AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
                                                                n_mels=mel_number, n_fft=fft_size,
                                                                window_fn=window_function, sample_rate=16000))
