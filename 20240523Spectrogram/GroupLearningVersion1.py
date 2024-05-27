@@ -1,4 +1,3 @@
-from Model.Model import  ResNet34AveragePooling
 import torch.nn as  nn
 import torch
 import torch.optim as optim

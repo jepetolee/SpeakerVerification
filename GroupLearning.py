@@ -1,11 +1,9 @@
 import torch
-import torch.optim as optim
-from DataBuilder import TrainDataBuilder,TestDataLoader
+from DataBuilder import TestDataLoader
 from torch.utils.data import DataLoader
 from train import valid
-from Model.Model import ResNet34AveragePooling,ResNet34SE ,ResNet34SEPointwise,ResNet34DoubleAttention
+from Model.Model import ResNet34TSTP
 from Model.GroupLearningVersion1 import GroupLearning
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
 import os ,random,itertools, soundfile
 import numpy as np
@@ -136,7 +134,7 @@ if __name__ == '__main__':
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
 
     # Running Functions, this can be expressed with Kind Of Tests
-    RunWithArguments(ResNet34AveragePooling, model_name='GroupLearning_1', batch_size=32, lr=1e-4,
+    RunWithArguments(ResNet34TSTP, model_name='GroupLearning_1', batch_size=32, lr=1e-4,
                      num_epochs=35, model_weight_decay=2e-5,
                      window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
                      margin=0.2, scale=30, SETYPE=None)

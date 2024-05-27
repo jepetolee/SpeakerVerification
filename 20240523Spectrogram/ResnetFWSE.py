@@ -1,9 +1,9 @@
 import torch.nn as nn
 import torch
-from Model.ResnetBaseModel import resnet34Encoder
+from Model.Model import resnet34Encoder
 import  torchaudio.transforms as AudioT
-from Model.utils import PreEmphasis,FbankAug
-import math
+from Model.Model import PreEmphasis
+
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -42,7 +42,7 @@ class BasicBlock(nn.Module):
         else:
             self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
-        self.relu = nn.ReLU()
+        self.gelu = nn.GELU()
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
@@ -54,19 +54,18 @@ class BasicBlock(nn.Module):
         identity = x
 
         out = self.conv1(x)
-        out = self.relu(out)
+        out = self.gelu(out)
         out = self.bn1(out)
 
         out = self.conv2(out)
+        out = self.gelu(out)
         out = self.bn2(out)
+
         out = self.se(out)
-
-
         if self.downsample is not None:
             identity = self.downsample(x)
 
         out += identity
-        out = self.relu(out)
 
         return out
 
@@ -75,7 +74,7 @@ class BasicBlock(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, in_channel=80,inplane=128, zero_init_residual=False,
+    def __init__(self, block, layers, in_channel=80, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
@@ -83,20 +82,21 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.inplanes = 64
+        self.inplanes = 32
         self.dilation = 1
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=3, stride=(1,1), padding=1)
-        self.bn = norm_layer(64)
-        self.relu = nn.ReLU()
-        self.layer1 = self._make_layer(block, 64, layers[0],stride=(2,2),frequency=40)
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=(2,2),frequency=20,
+        self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=(3,3), stride=(1,1), padding=1)
+        self.bn = norm_layer(512)
+        self.gelu = nn.GELU()
+        self.layer1 = self._make_layer(block, 32, layers[0],stride=(1,1),frequency=80)
+        self.layer2 = self._make_layer(block, 64, layers[1], stride=(2,2),frequency=40,
                                        dilate=1)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=(2,2),frequency=10,
+        self.layer3 = self._make_layer(block, 128, layers[2], stride=(2,2),frequency=20,
                                        dilate=1)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=(2,2),frequency=5,
+        self.layer4 = self._make_layer(block, 256, layers[3], stride=(2,2),frequency=10,
                                        dilate=1)
+        self.layer5 = self._make_layer(block, 512, layers[0],stride=(2,2),frequency=5)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -135,12 +135,13 @@ class ResNet(nn.Module):
     def _forward_impl(self, x):
 
         x = self.conv1(x)
-        x = self.relu(x)
-        x = self.bn(x)
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
+        x = self.layer5(x)
+        x = self.gelu(x)
+        x = self.bn(x)
 
         return x
 
@@ -148,16 +149,17 @@ class ResNet(nn.Module):
         return self._forward_impl(x)
 
 
-def resnet34Encoder(channel_size=80, inplane=64, **kwargs):
-    return ResNet(BasicBlock, [3,4,6,3], in_channel=channel_size, inplane=inplane, **kwargs)
+def resnet34Encoder(channel_size=80,  **kwargs):
+    return ResNet(BasicBlock, [2,6,4,2,2], in_channel=channel_size, **kwargs)
 
 class ResNet34FWSE(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 256, window_function=torch.hamming_window):
 
             super(ResNet34FWSE, self).__init__()
-            self.MelSpec = AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
+            self.MelSpec = nn.Sequential(PreEmphasis(),
+                                         AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
                                                                n_mels=mel_number, n_fft=fft_size,
-                                                               window_fn=window_function, sample_rate=16000)
+                                                               window_fn=window_function, sample_rate=16000))
             #self.specaug = FbankAug()
 
             self.instancenorm = nn.InstanceNorm1d(80)
@@ -176,6 +178,7 @@ class ResNet34FWSE(nn.Module):
             x = x.log()
           #  x = self.specaug(x)
             x = self.instancenorm(x).unsqueeze(1)
+
             x = self.model(x)
 
             x = x.reshape((x.shape[0], -1, x.shape[-1]))

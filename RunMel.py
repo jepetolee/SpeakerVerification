@@ -7,9 +7,12 @@ from AAM_Softmax import AAM_Softmax
 from DataBuilder import TrainDataBuilder,TestDataLoader
 from torch.utils.data import DataLoader
 from train import train
-from Model.Model import ResNet34AveragePooling,ResNet34SE ,ResNet34SEPointwise,ResNet34DoubleAttention
-from Model.ResnetFWSE import ResNet34FWSE
+from Model.EfficientModel import ResNet34Efficient
+from Model.Model import ResNet34TSTP
+from Model.SpectrogramResnet import ResNet34Spectrogram
 from Model.FWSEspectrogram import ResNet34FWSESpectrogram
+from Model.DFResnet import DFResnet60,DFResnet114
+
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
 
@@ -41,22 +44,18 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
     '''
 
     # Choose Model with Pooling Type
-    if SETYPE is not None:
-        model = testing_model(window_length=window_size, hopping_length=hop_size, mel_number=n_mel, fft_size=512,
-                              window_function=window_fn, encoder_type=SETYPE).cuda()
-    else:
-        model = testing_model(window_length=window_size, hopping_length=hop_size, mel_number=n_mel, fft_size=512,
+    model = testing_model(window_length=window_size, hopping_length=hop_size, mel_number=n_mel, fft_size=512,
                               window_function=window_fn).cuda()
     print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     # Add Loss, Optimizer, and Scheduler
     criterion = AAM_Softmax(n_class=1211, margin=margin, scale=scale).cuda()
     criterion.train()
-    optimizer = optim.AdamW(params=[{'params': model.parameters(), 'weight_decay': model_weight_decay},
-                                    {'params': criterion.parameters(), 'weight_decay': AAM_softmax_weight_decay}],
-                            lr=lr)
+    optimizer = optim.Adam(params=[{'params': model.parameters()},
+                                    {'params': criterion.parameters()}],
+                            lr=lr,weight_decay=model_weight_decay)
 
-    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=30, T_mult=1, eta_min=1e-7)
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=num_epochs, T_mult=1, eta_min=1e-8)
 
     # Build Train Dataset
     TrainingSet = TrainDataBuilder("./data/VoxCeleb1/train_list.txt", "./data/VoxCeleb1/train",n_mel=n_mel)
@@ -67,9 +66,9 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
     ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = False, num_workers = 10, drop_last = True)
 
     #training Model for epochs and put out the lowest eer
-    eer = train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel'+model_name)
+    train(model, optimizer,scheduler, criterion,TrainDatasetLoader,ValidDatasetLoader, num_epochs,'./models/LogMel/LowestEERLogMel'+model_name)
     wandb.finish()
-    return eer
+    return
 
 if __name__ == '__main__':
     # fixing the seed Value
@@ -77,24 +76,34 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
+    RunWithArguments(ResNet34Spectrogram, model_name='ResNet34Spectrogram', batch_size=16, lr=1e-4,
+                     num_epochs=40, model_weight_decay=2e-5,
+                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
+                     margin=0.2, scale=30)
+
+    RunWithArguments(ResNet34FWSESpectrogram, model_name='ResNet34FWSESpectrogram', batch_size=16, lr=1e-4,
+                     num_epochs=40, model_weight_decay=2e-5,
+                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
+                     margin=0.2, scale=30)
+
+
+
+
+
 
     # Running Functions, this can be expressed with Kind Of Tests
 
 
+'''
 
-    RunWithArguments(ResNet34FWSE, model_name='ResNet34FWSE', batch_size=32, lr=3e-4,
-                     num_epochs=30, model_weight_decay=2e-5,
+    RunWithArguments(DFResnet60, model_name='DFResnet60', batch_size=16, lr=1e-4,
+                     num_epochs=40, model_weight_decay=2e-5,
                      window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30, SETYPE=None)
+                     margin=0.2, scale=30)
 
-    RunWithArguments(ResNet34AveragePooling, model_name='ResNet34AveragePooling_no-pre-Emphasis', batch_size=32, lr=3e-4,
-                     num_epochs=30, model_weight_decay=2e-5,
-                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30, SETYPE=None)
+'''
 
-    RunWithArguments(ResNet34FWSESpectrogram, model_name='ResNet34FWSESpectrogram-pre-Emphasis', batch_size=16, lr=1e-4,
-                     num_epochs=30, model_weight_decay=2e-5,
-                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30, SETYPE=None)
+
+
 
 

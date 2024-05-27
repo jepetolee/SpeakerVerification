@@ -5,29 +5,33 @@ import torch.nn as  nn
 import torch
 from Model.ResnetBaseModel import resnet34Encoder
 import  torchaudio.transforms as AudioT
-from Model.utils import PreEmphasis,FbankAug
+from Model.utils import PreEmphasis
 
-class ResNet34AveragePooling(nn.Module):
+
+class ResNet34TSTP(nn.Module):
     def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window):
 
-            super(ResNet34AveragePooling, self).__init__()
-            self.MelSpec = AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
+            super(ResNet34TSTP, self).__init__()
+            self.MelSpec =nn.Sequential(PreEmphasis(),
+                                        AudioT.MelSpectrogram(win_length=window_length, hop_length=hopping_length,
                                                                n_mels=mel_number, n_fft=fft_size,
-                                                               window_fn=window_function, sample_rate=16000)
+                                                               window_fn=window_function, sample_rate=16000))
             #self.specaug = FbankAug()
 
             self.instancenorm = nn.InstanceNorm1d(80)
-            self.model = resnet34Encoder(channel_size=1, inplane=64)
-            self.fc = nn.Linear(in_features=512,out_features=512)
-            self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+            self.model = resnet34Encoder(channel_size=1, inplane=32)
+            self.fc = nn.Linear(in_features=2560,out_features=512)
+
     def forward(self, input_tensor: torch.Tensor):
             x= self.MelSpec(input_tensor)+1e-6
             x = x.log()
           #  x = self.specaug(x)
             x = self.instancenorm(x).unsqueeze(1)
             x = self.model(x)
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)
+            pooling_mean = torch.mean(x, dim=-1)
+            pooling_std = torch.sqrt(torch.var(x, dim=-1) + 1e-10)
+            x = torch.cat((torch.flatten(pooling_mean, start_dim=1),
+                             torch.flatten(pooling_std, start_dim=1)), 1)
 
             return self.fc(x)
 

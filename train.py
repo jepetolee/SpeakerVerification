@@ -7,10 +7,12 @@ from tqdm import tqdm
 from AAM_Softmax import computeEER
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from torch.cuda.amp import autocast, GradScaler
 
 def train(model, optimizer,scheduler, loss_function, train_loader,valid_loader, epoch,model_link):
     lowest_eer = 9999 # this is big value that EER can changes when Lowest EER marked
     #valid_eer = valid(model, valid_loader)
+    scaler = GradScaler()
     for iteration in range(epoch):
         model.train()
         train_loss, correct,index =0,0,0

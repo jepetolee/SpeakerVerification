@@ -84,17 +84,16 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=3, stride=1, padding=1,
                                bias=False)
-        self.bn = norm_layer(512)
+        self.bn = norm_layer(256)
         self.gelu = nn.GELU()
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+        self.layer1 = self._make_layer(block, 32, layers[0],stride=(2,1))
+        self.layer2 = self._make_layer(block, 64, layers[1], stride=(2,2),
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+        self.layer3 = self._make_layer(block, 128, layers[2], stride=(2,1),
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+        self.layer4 = self._make_layer(block, 256, layers[3], stride=(2,1),
                                        dilate=replace_stride_with_dilation[2])
 
 
@@ -155,7 +154,7 @@ class ResNet(nn.Module):
         return self._forward_impl(x)
 
 
-def resnet34Encoder(channel_size=80, inplane=64, **kwargs):
+def resnet34Encoder(channel_size=80, inplane=32, **kwargs):
     return ResNet(BasicBlock, [3, 4, 6, 3], in_channel=channel_size, inplane=inplane, **kwargs)
 
 class ResNetWithoutFirstLayer(nn.Module):
@@ -182,13 +181,12 @@ class ResNetWithoutFirstLayer(nn.Module):
 
         self.bn = norm_layer(512)
         self.gelu = nn.GELU()
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+        self.layer1 = self._make_layer(block, 32, layers[0],stride=(2,1))
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=(2,2),
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=(2,1),
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=(2,1),
                                        dilate=replace_stride_with_dilation[2])
 
 

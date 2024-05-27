@@ -3,10 +3,10 @@
 
 import torch.nn as  nn
 import torch
-from Model.ResnetBaseModel import ResNetWithoutFirstLayerEncoder
+from Model.Model import ResNetWithoutFirstLayerEncoder
 import  torchaudio.transforms as AudioT
 import torch.nn.functional as F
-from Model.utils import PreEmphasis
+from Model.Model import PreEmphasis
 
 
 class GatingConv(nn.Module):
