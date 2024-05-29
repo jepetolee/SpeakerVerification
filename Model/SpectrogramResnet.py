@@ -7,7 +7,6 @@ import torchaudio.transforms as AudioT
 from Model.utils import PreEmphasis
 import torch.nn.functional as F
 
-
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=dilation, groups=groups, bias=False, dilation=dilation)
@@ -90,17 +89,19 @@ class ResNet(nn.Module):
         self.base_width = width_per_group
         self.conv1 = nn.Conv2d(in_channel, self.inplanes, kernel_size=3, stride=1, padding=1,
                                bias=False)
-        self.bn = norm_layer(256)
+        self.bn = norm_layer(512)
         self.gelu = nn.GELU()
         self.layer1 = self._make_layer(block, 8, layers[0],stride=(2,1))
         self.layer2 = self._make_layer(block, 16, layers[1], stride=(2,1),
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 32, layers[2], stride=(2,2),
+        self.layer3 = self._make_layer(block, 32, layers[2], stride=(2,1),
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 64, layers[3], stride=(2,1),
+        self.layer4 = self._make_layer(block, 64, layers[3], stride=(2,2),
                                        dilate=replace_stride_with_dilation[2])
         self.layer5 = self._make_layer(block, 128, layers[4],stride=(2,1))
         self.layer6 = self._make_layer(block, 256, layers[5], stride=(2,1),
+                                       dilate=replace_stride_with_dilation[0])
+        self.layer7 = self._make_layer(block, 512, layers[6], stride=(2, 1),
                                        dilate=replace_stride_with_dilation[0])
 
 
@@ -154,6 +155,7 @@ class ResNet(nn.Module):
 
         x = self.layer5(x)
         x = self.layer6(x)
+        x = self.layer7(x)
 
         x = self.bn(x)
         x = self.gelu(x)
@@ -164,7 +166,7 @@ class ResNet(nn.Module):
 
 
 def resnet34Encoder(channel_size=1,  **kwargs):
-    return ResNet(BasicBlock, [2, 2, 2, 4, 3 ,3], in_channel=channel_size,  **kwargs)
+    return ResNet(BasicBlock, [1, 1, 2, 2, 5 ,3, 2], in_channel=channel_size,  **kwargs)
 
 
 class ResNet34Spectrogram(nn.Module):
@@ -179,7 +181,7 @@ class ResNet34Spectrogram(nn.Module):
 
             self.instancenorm = nn.InstanceNorm1d(257)
             self.model = resnet34Encoder(channel_size=1)
-            self.fc = nn.Linear(in_features=2560,out_features=512)
+            self.fc = nn.Linear(in_features=3072,out_features=512)
 
     def forward(self, input_tensor: torch.Tensor):
             x= self.Spectrogram(input_tensor) + 1e-6

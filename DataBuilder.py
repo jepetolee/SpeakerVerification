@@ -13,8 +13,8 @@ import glob
 #          provide datas with list
 
 class TestDataLoader(Dataset):
-    def __init__(self, test_list:str, test_path:str,n_mel=80):
-        self.n_mel = n_mel
+    def __init__(self, test_list:str, test_path:str):
+
         self.data_list:list = list()
 
         with open(test_list) as f:
@@ -61,8 +61,8 @@ class TestDataLoader(Dataset):
 # explain: DataBuilder for TrainDataset
 
 class TrainDataBuilder(Dataset):
-    def __init__(self, train_list:str, train_path:str,n_mel=80):
-        self.n_mel = n_mel
+    def __init__(self, train_list:str, train_path:str):
+
         self.noisetypes = ['noise', 'speech', 'music']
         self.noisesnr = {'noise': [0, 15], 'speech': [13, 20], 'music': [5, 15]}
         self.numnoise = {'noise': [1, 1], 'speech': [3, 8], 'music': [1, 1]}
