@@ -36,7 +36,7 @@ class ResNet34TSTP(nn.Module):
             return self.fc(x)
 
 class ResNet34SE(nn.Module):
-    def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window,encoder_type="SAP"):
+    def __init__(self,window_length=400,hopping_length=160, mel_number= 80,dilation=[1,1,1,1], fft_size= 512, window_function=torch.hamming_window,encoder_type="SAP"):
 
             super(ResNet34SE, self).__init__()
             self.MelSpec = nn.Sequential(PreEmphasis(),
@@ -47,7 +47,7 @@ class ResNet34SE(nn.Module):
 
             self.instancenorm = nn.InstanceNorm1d(80)
             self.encoder_type = encoder_type
-            self.model = resnet34Encoder(channel_size=1, inplane=64)
+            self.model = ResNet(BasicBlock, [3, 4, 6, 3], in_channel=1, inplane=32,dilation=dilation)
 
             self.attention = nn.Sequential(
             nn.Conv1d(
@@ -92,7 +92,7 @@ class ResNet34SE(nn.Module):
 
 
 class ResNet34SEPointwise(nn.Module):
-    def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window,encoder_type="SAP"):
+    def __init__(self,window_length=400,hopping_length=160, mel_number= 80,dilation=[1,1,1,1], fft_size= 512, window_function=torch.hamming_window,encoder_type="SAP"):
 
             super(ResNet34SEPointwise, self).__init__()
             self.MelSpec = nn.Sequential(
@@ -103,7 +103,7 @@ class ResNet34SEPointwise(nn.Module):
 
             self.instancenorm = nn.InstanceNorm1d(80)
             self.encoder_type = encoder_type
-            self.model = resnet34Encoder(channel_size=1, inplane=64)
+            self.model = ResNet(BasicBlock, [3, 4, 6, 3], in_channel=1, inplane=32,dilation=dilation)
 
             self.attention = nn.Sequential(
             nn.Conv2d(
