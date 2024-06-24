@@ -58,7 +58,7 @@ def valid(model:torch.nn.Module, valid_loader:DataLoader):
                     embeddings[data_path[0]] = F.normalize(model(data.unsqueeze(0).cuda()), p=2, dim=1).detach().cpu()
 
 
-    with open('../data/VoxCeleb1/trials.txt') as f:
+    with open('../data/VoxCeleb1/1111.txt') as f:
         lines_of_test_dataset = f.readlines()
     for index, line in enumerate(lines_of_test_dataset):
 

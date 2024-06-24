@@ -11,6 +11,7 @@ from Model.EfficientModel import ResNet34Efficient
 from Model.Model import ResNet34TSTP
 from Model.SpectrogramResnet import ResNet34Spectrogram
 from Model.FWSEspectrogram import ResNet34FWSESpectrogram
+from ContractionMappingSoftmax import CMSoftmax
 from Model.DFResnet import DFResnet60,DFResnet114
 
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
@@ -18,11 +19,10 @@ import wandb
 
 
 def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
-                     num_epochs = 10, model_weight_decay= 2e-6,AAM_softmax_weight_decay=2e-4,
-                     window_size=400, hop_size=160, window_fn=torch.hann_window, n_mel=80,
-                     margin=0.2, scale=30,SETYPE=None):
+                     num_epochs = 10, model_weight_decay= 2e-6,dilation=[2,2,2,2],AAM_softmax_weight_decay=2e-4,
+                     window_size=400, hop_size=160, n_mel=80):
     # Setting The Project
-    wandb.init(project='SpeakerVerification Researching New Model 2', settings=wandb.Settings(console='off'))
+    wandb.init(project='SpeakerVerification Researching New Model 4', settings=wandb.Settings(console='off'))
     wandb.run.name = model_name
     wandb.run.save()
     args = {
@@ -44,12 +44,12 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
     '''
 
     # Choose Model with Pooling Type
-    model = testing_model(window_length=window_size, hopping_length=hop_size, mel_number=n_mel, fft_size=512,
-                              window_function=window_fn).cuda()
+    model = testing_model(window_length=window_size, hopping_length=hop_size, mel_number=n_mel,dilation=dilation, fft_size=512,).cuda()
+    model.load_state_dict(torch.load('./models/LogMel/LowestEERLogMelResnet34TSTP.pt'))
     print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     # Add Loss, Optimizer, and Scheduler
-    criterion = AAM_Softmax(n_class=1211, margin=margin, scale=scale).cuda()
+    criterion = AAM_Softmax(n_class=1211, scale=30, margin=0.2).cuda()
     criterion.train()
     optimizer = optim.Adam(params=[{'params': model.parameters()},
                                     {'params': criterion.parameters()}],
@@ -58,11 +58,11 @@ def RunWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4,
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=num_epochs, T_mult=1, eta_min=1e-8)
 
     # Build Train Dataset
-    TrainingSet = TrainDataBuilder("./data/VoxCeleb1/train_list.txt", "./data/VoxCeleb1/train",n_mel=n_mel)
+    TrainingSet = TrainDataBuilder('./train_list.txt', './train/wav')
     TrainDatasetLoader = DataLoader(TrainingSet, batch_size = batch_size, shuffle = True, num_workers = 10, drop_last = True)
 
     # Build Test Dataset
-    ValidSet = TestDataLoader('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test' ,n_mel=n_mel)
+    ValidSet = TestDataLoader('./trials.txt','./test/wav')
     ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = False, num_workers = 10, drop_last = True)
 
     #training Model for epochs and put out the lowest eer
@@ -76,34 +76,11 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
-    RunWithArguments(ResNet34Spectrogram, model_name='ResNet34Spectrogram', batch_size=16, lr=1e-4,
-                     num_epochs=40, model_weight_decay=2e-5,
-                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30)
+    RunWithArguments(ResNet34TSTP, model_name='Resnet34TSTPDilation3', batch_size=16, lr=1e-4,
+                     num_epochs=40, model_weight_decay=2e-5,dilation=[3,3,3,3],
+                     window_size=320, hop_size=80,  n_mel=80,)
 
-    RunWithArguments(ResNet34FWSESpectrogram, model_name='ResNet34FWSESpectrogram', batch_size=16, lr=1e-4,
-                     num_epochs=40, model_weight_decay=2e-5,
-                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30)
-
-
-
-
-
-
-    # Running Functions, this can be expressed with Kind Of Tests
-
-
-'''
-
-    RunWithArguments(DFResnet60, model_name='DFResnet60', batch_size=16, lr=1e-4,
-                     num_epochs=40, model_weight_decay=2e-5,
-                     window_size=320, hop_size=80, window_fn=torch.hamming_window, n_mel=80,
-                     margin=0.2, scale=30)
-
-'''
-
-
-
-
+    RunWithArguments(ResNet34TSTP, model_name='Resnet34TSTPDilation2', batch_size=16, lr=1e-4,
+                     num_epochs=40, model_weight_decay=2e-5,dilation=[2,2,2,2],
+                     window_size=320, hop_size=80,  n_mel=80,)
 

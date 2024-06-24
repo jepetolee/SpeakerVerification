@@ -33,7 +33,7 @@ class TestDataLoader(Dataset):
 
         # Read wav file and convert to torch tensor
         audio, sr = soundfile.read(filename)
-        max_audio = 300 * 160 + 240 # Our Sample Time(Sec) for BaseLine is 3 seconds(16000(sr) *3)
+        max_audio = 600 * 160 + 240 # Our Sample Time(Sec) for BaseLine is 3 seconds(16000(sr) *3)
         if audio.shape[0] <= max_audio:
             shortage = max_audio - audio.shape[0]
             audio = np.pad(audio, (0, shortage), 'wrap')

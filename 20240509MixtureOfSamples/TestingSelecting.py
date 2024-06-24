@@ -63,7 +63,7 @@ def RunSelectingWithArguments(testing_model,model_name,batch_size=16, lr= 5.3e-4
 
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=35,T_mult=2,eta_min=1e-7)
 
-    ValidSet = TestDataLoader('./data/VoxCeleb1/trials.txt','./data/VoxCeleb1/test' ,
+    ValidSet = TestDataLoader('./data/VoxCeleb1/1111.txt','./data/VoxCeleb1/test' ,
                               n_mel=n_mel)
     ValidDatasetLoader = DataLoader(ValidSet, batch_size = 1, shuffle = False, num_workers = 10, drop_last = True)
 

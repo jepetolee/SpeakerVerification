@@ -3,13 +3,13 @@
 
 import torch.nn as  nn
 import torch
-from Model.ResnetBaseModel import resnet34Encoder
+from Model.ResnetBaseModel import ResNet,BasicBlock
 import  torchaudio.transforms as AudioT
 from Model.utils import PreEmphasis
 
 
 class ResNet34TSTP(nn.Module):
-    def __init__(self,window_length=400,hopping_length=160, mel_number= 80, fft_size= 512, window_function=torch.hamming_window):
+    def __init__(self,window_length=400,hopping_length=160, mel_number= 80,dilation=[1,1,1,1],  fft_size= 512, window_function=torch.hamming_window):
 
             super(ResNet34TSTP, self).__init__()
             self.MelSpec =nn.Sequential(PreEmphasis(),
@@ -19,7 +19,7 @@ class ResNet34TSTP(nn.Module):
             #self.specaug = FbankAug()
 
             self.instancenorm = nn.InstanceNorm1d(80)
-            self.model = resnet34Encoder(channel_size=1, inplane=32)
+            self.model = ResNet(BasicBlock, [3, 4, 6, 3], in_channel=1, inplane=32,dilation=dilation)
             self.fc = nn.Linear(in_features=2560,out_features=512)
 
     def forward(self, input_tensor: torch.Tensor):

@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch
-from Model.Model import resnet34Encoder
 import  torchaudio.transforms as AudioT
 from Model.Model import PreEmphasis
 
