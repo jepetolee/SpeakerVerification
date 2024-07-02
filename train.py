@@ -19,7 +19,7 @@ def train(model, optimizer,scheduler, loss_function,train_loader, valid_loader, 
         train_loss, correct,index =0,0,0
 
         # Build Train Dataset
-        accumulation_steps=1
+        accumulation_steps = 8
 
         with tqdm(iter(train_loader)) as pbar:
             for i ,(data, targets) in enumerate(pbar):
@@ -62,7 +62,6 @@ def valid(model:torch.nn.Module, valid_loader:DataLoader):
         for input_datas, data_path in pbar:
 
             for data in input_datas:
-                with autocast(device_type='cuda'):
                     with torch.no_grad():
                         embeddings[data_path[0]] = F.normalize(model.forward(data.cuda()), p=2, dim=1).detach().cpu()
 
