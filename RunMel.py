@@ -7,7 +7,7 @@ from AAM_Softmax import AAM_Softmax
 from DataBuilder import TrainDataBuilder,TestDataLoader
 from torch.utils.data import DataLoader
 from train import train
-from Model.Model import DeformableSincResNet34
+from Model.Model import DeformableSincResNet44,SincResNet44,ResNet44TSTP
 
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
@@ -72,8 +72,12 @@ if __name__ == '__main__':
     torch.cuda.manual_seed_all(seed)
     wandb.login(key="7a68c1d3f11c3c6af35fa54503409b7ff50e0312")
 
-    RunWithArguments(DeformableSincResNet34, model_name='DeformableSinc', batch_size=16, lr=2e-3,
-                     num_epochs=40, model_weight_decay=2e-5, dilation=[(1, 1), (1, 1), (1, 1), (1, 1)],
+    RunWithArguments(SincResNet44, model_name='SincResNet44', batch_size=16, lr=2e-3,
+                     num_epochs=40, model_weight_decay=2e-5, dilation=[1,1,1,1, 1,1,1],
+                     window_size=320, hop_size=80, n_mel=80, )
+
+    RunWithArguments(ResNet44TSTP, model_name='ResNet44', batch_size=16, lr=2e-3,
+                     num_epochs=40, model_weight_decay=2e-5, dilation=[1,1,1,1, 1,1,1],
                      window_size=320, hop_size=80, n_mel=80, )
 
 

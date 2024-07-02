@@ -90,3 +90,54 @@ class DeformableSincConv1d(nn.Module):
         deformed_output = deformed_output.flatten(-2, -1)
 
         return F.conv1d(deformed_output, filters, stride=self.stride, padding=self.padding, dilation=1, bias=None)
+
+
+
+class SincConv1d(nn.Module):
+    def __init__(self, out_channels, kernel_size, dilation=1, stride=1, padding=0, sample_rate=16000):
+        super(SincConv1d, self).__init__()
+        self.out_channels = out_channels
+        self.dilation = dilation
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.sample_rate = sample_rate
+
+        if kernel_size % 2 == 0:
+            self.kernel_size += 1
+
+        self.low_hz = 0
+        self.high_hz = sample_rate / 2
+
+        hz = torch.linspace(self.low_hz, self.high_hz, self.out_channels + 1)
+        self.band = nn.Parameter((hz[1:] - hz[:-1]).view(-1, 1))
+        self.hz = nn.Parameter(hz[:-1].view(-1, 1))
+
+    def sinc(self, t):
+        return torch.where(t == 0, torch.ones_like(t), torch.sin(t) / t)
+
+    def forward(self, x):
+        device = x.device
+        x= x.unsqueeze(1)
+        self.hz.data = self.hz.data.clamp(self.low_hz, self.high_hz)
+        self.band.data = self.band.data.clamp(3.0, self.high_hz - self.low_hz)
+
+        N = self.kernel_size
+        t_right = torch.linspace(1, (N - 1) / 2, steps=(N - 1) // 2, device=device) / self.sample_rate
+
+        filters = []
+        for i in range(self.out_channels):
+            low = self.hz[i] - self.band[i] / 2
+            high = self.hz[i] + self.band[i] / 2
+
+            band_pass_left = (2 * high * self.sinc(2 * high * t_right)) - (2 * low * self.sinc(2 * low * t_right))
+            band_pass_center = torch.ones(1, device=device)
+            band_pass_right = band_pass_left.flip(dims=[0])
+
+            band_pass = torch.cat([band_pass_left, band_pass_center, band_pass_right])
+            band_pass = band_pass / (2 * self.band[i])
+            filters.append(band_pass)
+
+        filters = torch.stack(filters).view(self.out_channels, 1, self.kernel_size)
+
+        return F.conv1d(x, filters, stride=self.stride, padding=self.padding, dilation=1, bias=None)
